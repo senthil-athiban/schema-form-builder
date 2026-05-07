@@ -11,8 +11,8 @@ import { create } from "zustand";
 
 type SelectedNode = 
     | { type: "page", pageId: string }
-    | { type: "page", pageId: string, sectionId: string }
-    | { type: "page", pageId: string, sectionId: string, questionId: string }
+    | { type: "section", pageId: string, sectionId: string }
+    | { type: "question", pageId: string, sectionId: string, questionId: string }
     | null;
 
 interface FormBuilderState {
@@ -75,7 +75,7 @@ interface FormBuilderActions {
     sectionId: string,
     questionId: string,
   ) => void;
-  reorderQuestion: (
+  reorderQuestions: (
     pageId: string,
     sectionId: string,
     startIndex: number,
@@ -160,10 +160,9 @@ const moveItem = <T>(arr: T[], from: number, to: number) => {
   return items;
 };
 
-export const useFormBuilderStore = create<
-  FormBuilderState & FormBuilderActions
->()(
-  devtools(
+type FormBuilderStore = FormBuilderState & FormBuilderActions
+export const useFormBuilderStore = create<FormBuilderStore>()(
+  devtools<FormBuilderStore>(
     (set, get) => ({
       currentForm: createEmptyForm(),
       selection: null,
@@ -381,7 +380,7 @@ export const useFormBuilderStore = create<
           };
         }),
 
-      reorderSection: (pageId: string, startIndex: number, endIndex: number) =>
+      reorderSections: (pageId: string, startIndex: number, endIndex: number) =>
         set((state) => {
           let didReorder = false;
           const currentForm = state.currentForm;
@@ -616,7 +615,7 @@ export const useFormBuilderStore = create<
           };
         }),
 
-      reorderQuestion: (
+      reorderQuestions: (
         pageId: string,
         sectionId: string,
         startIndex: number,
