@@ -1,5 +1,5 @@
-import React from 'react';
-import type { FormField } from '../../../shared/types';
+import React, { useCallback } from 'react';
+import type { FormField, FormQuestion, WidthType } from '../../../shared/types';
 import { useFormBuilderStore } from '../../store/form-builder-store';
 
 interface DateTimeFieldPanelProps {
@@ -7,7 +7,12 @@ interface DateTimeFieldPanelProps {
 }
 
 export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field }) => {
-  const { updateField } = useFormBuilderStore();
+  const { updateQuestion, selection } = useFormBuilderStore();
+  const updateCurrentQuestion = useCallback((updates: Partial<FormQuestion>) => {
+    if (selection?.type !== "question") return;
+    updateQuestion(selection.pageId, selection.sectionId, field.id, updates);
+  },[field.id, selection, updateQuestion]);
+
   const inputClass =
     'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-indigo-100 transition focus:border-indigo-400 focus:ring-4';
   const labelClass = 'mb-2 block text-xs font-medium text-slate-700';
@@ -24,7 +29,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
           <input
             type="text"
             value={field.label}
-            onChange={(e) => updateField(field.id, { label: e.target.value })}
+            onChange={(e) => updateCurrentQuestion({ label: e.target.value })}
             className={inputClass}
           />
         </div>
@@ -34,7 +39,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
           <input
             type="text"
             value={field.name}
-            onChange={(e) => updateField(field.id, { name: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
+            onChange={(e) => updateCurrentQuestion({ name: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
             className={`${inputClass} font-mono`}
           />
         </div>
@@ -43,7 +48,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
           <label className={labelClass}>Width</label>
           <select
             value={field.width || '100%'}
-            onChange={(e) => updateField(field.id, { width: e.target.value as any })}
+            onChange={(e) => updateCurrentQuestion({ width: e.target.value as WidthType })}
             className={inputClass}
           >
             <option value="25%">25%</option>
@@ -65,7 +70,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
               type="date"
               value={field.config?.min ? new Date(field.config.min).toISOString().split('T')[0] : ''}
               onChange={(e) =>
-                updateField(field.id, {
+                updateCurrentQuestion({
                   config: { ...field.config, min: e.target.value ? new Date(e.target.value).getTime() : undefined },
                 })
               }
@@ -79,7 +84,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
               type="date"
               value={field.config?.max ? new Date(field.config.max).toISOString().split('T')[0] : ''}
               onChange={(e) =>
-                updateField(field.id, {
+                updateCurrentQuestion({
                   config: { ...field.config, max: e.target.value ? new Date(e.target.value).getTime() : undefined },
                 })
               }
@@ -99,7 +104,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
               type="number"
               value={field.config?.step ?? 1}
               onChange={(e) =>
-                updateField(field.id, {
+                updateCurrentQuestion({
                   config: { ...field.config, step: e.target.value ? parseInt(e.target.value) : 1 },
                 })
               }
@@ -119,7 +124,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
             <input
               type="checkbox"
               checked={field.required}
-              onChange={(e) => updateField(field.id, { required: e.target.checked })}
+              onChange={(e) => updateCurrentQuestion({ required: e.target.checked })}
               className="h-4 w-4 cursor-pointer rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
             />
             <span className="text-sm text-slate-700">Required field</span>
@@ -136,7 +141,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
             <input
               type="checkbox"
               checked={field.disabled || false}
-              onChange={(e) => updateField(field.id, { disabled: e.target.checked })}
+              onChange={(e) => updateCurrentQuestion({ disabled: e.target.checked })}
               className="h-4 w-4 cursor-pointer rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
             />
             <span className="text-sm text-slate-700">Disabled</span>
@@ -148,7 +153,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
             <input
               type="checkbox"
               checked={field.hidden || false}
-              onChange={(e) => updateField(field.id, { hidden: e.target.checked })}
+              onChange={(e) => updateCurrentQuestion({ hidden: e.target.checked })}
               className="h-4 w-4 cursor-pointer rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
             />
             <span className="text-sm text-slate-700">Hidden by default</span>

@@ -61,6 +61,7 @@ export type FieldType =
   | 'section' // for grouping
   | 'html'; // for rich content
 
+export type WidthType = '25%' | '50%' | '75%' | '100%';
 export interface FormQuestion {
     id: string;
     type: FieldType;
@@ -74,7 +75,7 @@ export interface FormQuestion {
 
     // Layout & positioning
     order: number;
-    width?: '25%' | '50%' | '75%' | '100%';
+    width?: WidthType;
 
     // field-specific configurations
     config?: FieldConfig;

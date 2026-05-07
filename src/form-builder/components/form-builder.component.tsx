@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -9,20 +8,29 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-} from '@dnd-kit/core';
-import { Eye, Settings, Download, Upload, Undo, Redo, Trash2, Save } from 'lucide-react';
-import { useFormBuilderStore } from '../store/form-builder-store';
-import { FieldsPalette } from './fields-palette.component';
-import Canvas from './canvas.component';
-import { PropertyPanel } from './property-panel.component';
-import { FormSettings } from './form-settings.component';
-import { FormRenderer } from '../../form-engine/components/form-renderer';
+} from "@dnd-kit/core";
+import {
+  Eye,
+  Settings,
+  Download,
+  Upload,
+  Undo,
+  Redo,
+  Trash2,
+  Save,
+} from "lucide-react";
+import { useFormBuilderStore } from "../store/form-builder-store";
+import { FieldsPalette } from "./fields-palette.component";
+import Canvas from "./canvas.component";
+import { PropertyPanel } from "./property-panel.component";
+import { FormSettings } from "./form-settings.component";
+import { FormRenderer } from "../../form-engine/components/form-renderer";
 
 export const FormBuilder: React.FC = () => {
   const {
     currentForm,
-    addField,
-    reorderFields,
+    addQuestion,
+    reorderQuestions,
     mode,
     setMode,
     undo,
@@ -30,7 +38,33 @@ export const FormBuilder: React.FC = () => {
     history,
     resetForm,
     exportSchema,
+    selection,
   } = useFormBuilderStore();
+
+  const selectedPageId =
+    selection?.type === "page" ||
+    selection?.type === "section" ||
+    selection?.type === "question"
+      ? selection.pageId
+      : undefined;
+
+  const activePage =
+    currentForm.pages.find((p) => p.id === selectedPageId) ??
+    currentForm.pages[0];
+
+  const selectedSectionId =
+    selection?.type === "section" || selection?.type === "question"
+      ? selection.sectionId
+      : undefined;
+
+  const activeSection =
+    activePage?.sections.find((s) => s.id === selectedSectionId) ??
+    activePage?.sections[0];
+
+    // const activeQuestion =
+    // selection?.type === "question"
+    //   ? activeSection?.questions.find((q) => q.id === selection.questionId)
+    //   : undefined;
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -40,7 +74,7 @@ export const FormBuilder: React.FC = () => {
       activationConstraint: {
         distance: 8,
       },
-    })
+    }),
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -54,10 +88,10 @@ export const FormBuilder: React.FC = () => {
     if (!over) return;
 
     // Dragging from palette to canvas
-    if (active.id.toString().startsWith('palette-')) {
+    if (active.id.toString().startsWith("palette-")) {
       const fieldData = active.data.current?.field;
       if (fieldData) {
-        addField({
+        addQuestion(activePage.id, activeSection.id, {
           type: fieldData.type,
           label: fieldData.label,
           name: `${fieldData.type}_${Date.now()}`,
@@ -69,21 +103,23 @@ export const FormBuilder: React.FC = () => {
 
     // Reordering within canvas
     if (active.id !== over.id) {
-      const oldIndex = currentForm.fields.findIndex((f) => f.id === active.id);
-      const newIndex = currentForm.fields.findIndex((f) => f.id === over.id);
+      const oldIndex = activeSection.questions.findIndex((q) => q.id === active.id);
+      const newIndex = activeSection.questions.findIndex((q) => q.id === over.id);
       if (oldIndex !== -1 && newIndex !== -1) {
-        reorderFields(oldIndex, newIndex);
+        reorderQuestions(activePage.id, activeSection.id, oldIndex, newIndex);
       }
     }
   };
 
   const handleExport = () => {
     const schema = exportSchema();
-    const blob = new Blob([JSON.stringify(schema, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(schema, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `${schema.metadata.title.replace(/\s+/g, '_').toLowerCase()}_schema.json`;
+    a.download = `${schema.metadata.title.replace(/\s+/g, "_").toLowerCase()}_schema.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -91,9 +127,9 @@ export const FormBuilder: React.FC = () => {
   };
 
   const handleImport = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
     input.onchange = (e: any) => {
       const file = e.target.files[0];
       if (file) {
@@ -102,8 +138,8 @@ export const FormBuilder: React.FC = () => {
           try {
             const schema = JSON.parse(event.target?.result as string);
             useFormBuilderStore.getState().setForm(schema);
-          } catch (error) {
-            alert('Invalid JSON file');
+          } catch {
+            alert("Invalid JSON file");
           }
         };
         reader.readAsText(file);
@@ -114,20 +150,24 @@ export const FormBuilder: React.FC = () => {
 
   const handleSave = () => {
     // This would typically save to a database
-    console.log('Saving form:', exportSchema());
-    alert('Form saved successfully!');
+    console.log("Saving form:", exportSchema());
+    alert("Form saved successfully!");
   };
 
   const handleClear = () => {
-    if (window.confirm('Are you sure you want to clear the form? This cannot be undone.')) {
+    if (
+      window.confirm(
+        "Are you sure you want to clear the form? This cannot be undone.",
+      )
+    ) {
       resetForm();
     }
   };
 
   const iconButtonClass =
-    'flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300';
+    "flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300";
   const toolButtonClass =
-    'flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50';
+    "flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50";
 
   return (
     <div className="flex h-screen flex-col bg-slate-50">
@@ -136,7 +176,7 @@ export const FormBuilder: React.FC = () => {
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-slate-900">📋 Form Builder</h1>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-            {currentForm.fields.length} fields
+            {activeSection.questions.length} fields
           </span>
         </div>
 
@@ -144,17 +184,21 @@ export const FormBuilder: React.FC = () => {
           {/* Mode Toggle */}
           <div className="flex rounded-lg bg-slate-100 p-1">
             <button
-              onClick={() => setMode('edit')}
+              onClick={() => setMode("edit")}
               className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                mode === 'edit' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                mode === "edit"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
               }`}
             >
               Edit
             </button>
             <button
-              onClick={() => setMode('preview')}
+              onClick={() => setMode("preview")}
               className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition ${
-                mode === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                mode === "preview"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
               }`}
             >
               <Eye size={16} />
@@ -188,8 +232,8 @@ export const FormBuilder: React.FC = () => {
             title="Form Settings"
             className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
               showSettings
-                ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                ? "border-indigo-200 bg-indigo-50 text-indigo-600"
+                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
             }`}
           >
             <Settings size={16} />
@@ -236,7 +280,7 @@ export const FormBuilder: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {mode === 'edit' ? (
+        {mode === "edit" ? (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -277,15 +321,16 @@ export const FormBuilder: React.FC = () => {
             <div className="mx-auto max-w-4xl">
               <div className="mb-8 rounded-xl border border-blue-200 bg-blue-50 p-4">
                 <p className="text-sm text-blue-800">
-                  📋 <strong>Preview Mode:</strong> This is how your form will look to users. Switch to Edit mode to make changes.
+                  📋 <strong>Preview Mode:</strong> This is how your form will
+                  look to users. Switch to Edit mode to make changes.
                 </p>
               </div>
 
               <FormRenderer
                 schema={currentForm}
                 onSubmit={(data) => {
-                  console.log('Form submitted:', data);
-                  alert('Form submitted! Check console for data.');
+                  console.log("Form submitted:", data);
+                  alert("Form submitted! Check console for data.");
                 }}
               />
             </div>

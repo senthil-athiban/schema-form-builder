@@ -5,18 +5,19 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Copy, Trash2, GripVertical, EyeOff } from 'lucide-react';
 import { useFormBuilderStore } from '../store/form-builder-store';
-import type { FormField } from '../../shared/types';
+import type { FormQuestion } from '../../shared/types';
 
 interface CanvasFieldProps {
-  field: FormField;
+  question: FormQuestion;
+  pageId: string;
+  sectionId: string;
 }
 
-export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
+export const CanvasField: React.FC<CanvasFieldProps> = ({ question, pageId, sectionId }) => {
   const {
-    selectedFieldId,
-    selectField,
-    deleteField,
-    duplicateField,
+    selection,
+    setSelection,
+    deleteQuestion,
   } = useFormBuilderStore();
 
   const {
@@ -26,7 +27,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: field.id });
+  } = useSortable({ id: question.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -34,7 +35,11 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const isSelected = selectedFieldId === field.id;
+  const isSelected =
+  selection?.type === "question" &&
+  selection.pageId === pageId &&
+  selection.sectionId === sectionId &&
+  selection.questionId === question.id;
 
   const getFieldTypeIcon = (type: string) => {
     const icons: Record<string, string> = {
@@ -63,7 +68,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
           ? 'border border-slate-200 shadow-lg'
           : 'border border-slate-200 hover:border-indigo-200 hover:shadow-sm'
       }`}
-      onClick={() => selectField(field.id)}
+      onClick={() => setSelection({ type: 'question', pageId, sectionId, questionId: question.id })}
     >
       <div className="flex items-start gap-3">
         {/* Drag Handle */}
@@ -78,21 +83,21 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
 
         {/* Field Icon */}
         <div className="mt-0.5 text-2xl">
-          {getFieldTypeIcon(field.type)}
+          {getFieldTypeIcon(question.type)}
         </div>
 
         {/* Field Content */}
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
             <h4 className="text-sm font-semibold text-slate-900">
-              {field.label}
+              {question.label}
             </h4>
-            {field.required && (
+            {question.required && (
               <span className="text-xs font-semibold text-red-500">
                 *Required
               </span>
             )}
-            {field.hidden && (
+            {question.hidden && (
               <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                 <EyeOff size={12} />
                 Hidden
@@ -100,11 +105,11 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
             )}
           </div>
           <p className="my-1 text-xs text-slate-500">
-            {field.type.charAt(0).toUpperCase() + field.type.slice(1)} • {field.name}
+            {question.type.charAt(0).toUpperCase() + question.type.slice(1)} • {question.name}
           </p>
-          {field.placeholder && (
+          {question.placeholder && (
             <p className="my-1 text-xs italic text-slate-400">
-              Placeholder: {field.placeholder}
+              Placeholder: {question.placeholder}
             </p>
           )}
         </div>
@@ -115,7 +120,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            onClick={() => duplicateField(field.id)}
+            // onClick={() => duplicateField(field.id)}
             title="Duplicate field"
             className="flex items-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
           >
@@ -124,7 +129,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
           <button
             onClick={() => {
               if (window.confirm('Are you sure you want to delete this field?')) {
-                deleteField(field.id);
+                deleteQuestion(pageId, sectionId, question.id);
               }
             }}
             title="Delete field"
@@ -136,11 +141,11 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ field }) => {
       </div>
 
       {/* Field Preview - Show config info */}
-      {field.config?.options && field.config.options.length > 0 && (
+      {question.config?.options && question.config.options.length > 0 && (
         <div className="ml-10 mt-3 rounded-md bg-slate-50 p-2 text-xs text-slate-500">
           <strong>Options:</strong>{' '}
-          {field.config.options.slice(0, 3).map((opt) => opt.label).join(', ')}
-          {field.config.options.length > 3 && ` +${field.config.options.length - 3} more`}
+          {question.config.options.slice(0, 3).map((opt) => opt.label).join(', ')}
+          {question.config.options.length > 3 && ` +${question.config.options.length - 3} more`}
         </div>
       )}
     </div>

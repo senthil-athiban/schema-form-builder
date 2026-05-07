@@ -8,11 +8,18 @@ import { SelectFieldPanel } from './fields/select-field.component';
 import { DateTimeFieldPanel } from './fields/date-time-field.component';
 
 export const PropertyPanel: React.FC = () => {
-  const { currentForm, selectedFieldId, selectField } = useFormBuilderStore();
+  const { currentForm, selection, setSelection } = useFormBuilderStore();
 
-  const selectedField = currentForm.fields.find((f) => f.id === selectedFieldId);
 
-  if (!selectedField) {
+  const selectedQuestion =
+  selection?.type === "question"
+    ? currentForm.pages
+        .find((p) => p.id === selection.pageId)
+        ?.sections.find((s) => s.id === selection.sectionId)
+        ?.questions.find((q) => q.id === selection.questionId)
+    : undefined;
+
+  if (!selectedQuestion) {
     return (
       <aside className="flex h-full w-[350px] items-center justify-center border-l border-slate-200 bg-slate-50 p-6 text-center">
         <div>
@@ -27,23 +34,23 @@ export const PropertyPanel: React.FC = () => {
   }
 
   const renderFieldPanel = () => {
-    switch (selectedField.type) {
+    switch (selectedQuestion.type) {
       case 'text':
       case 'email':
       case 'textarea':
-        return <TextFieldPanel field={selectedField} />;
+        return <TextFieldPanel field={selectedQuestion} />;
       case 'number':
-        return <NumberFieldPanel field={selectedField} />;
+        return <NumberFieldPanel field={selectedQuestion} />;
       case 'select':
       case 'multiselect':
       case 'radio':
       case 'checkbox':
-        return <SelectFieldPanel field={selectedField} />;
+        return <SelectFieldPanel field={selectedQuestion} />;
       case 'date':
       case 'time':
-        return <DateTimeFieldPanel field={selectedField} />;
+        return <DateTimeFieldPanel field={selectedQuestion} />;
       default:
-        return <TextFieldPanel field={selectedField} />;
+        return <TextFieldPanel field={selectedQuestion} />;
     }
   };
 
@@ -54,11 +61,11 @@ export const PropertyPanel: React.FC = () => {
         <div>
           <h3 className="text-base font-semibold text-slate-900">Field Properties</h3>
           <p className="mt-1 text-xs text-slate-500">
-            {selectedField.type.charAt(0).toUpperCase() + selectedField.type.slice(1)}
+            {selectedQuestion.type.charAt(0).toUpperCase() + selectedQuestion.type.slice(1)}
           </p>
         </div>
         <button
-          onClick={() => selectField(null)}
+          onClick={() => setSelection(null)}
           className="flex items-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
         >
           <X size={20} />
