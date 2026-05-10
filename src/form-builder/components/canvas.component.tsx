@@ -18,11 +18,11 @@ import { Label } from "@/shared/components/ui/label";
 import { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 
-type CanvasModalMode = "setup" | "page" | "section";
+type CanvasModalMode = "page" | "section";
 
 const Canvas = () => {
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<CanvasModalMode>("setup");
+  const [modalMode, setModalMode] = useState<CanvasModalMode>("page");
   const [pageTitleInput, setPageTitleInput] = useState("");
   const [sectionTitleInput, setSectionTitleInput] = useState("");
 
@@ -44,7 +44,7 @@ const Canvas = () => {
 
   const activeSections = activePage?.sections ?? [];
   const hasSections = activeSections.length > 0;
-  const isEmpty = activeSections.every((q) => q.questions.length === 0);
+  // const isEmpty = activeSections.every((q) => q.questions.length === 0);
 
   const closeModal = () => {
     setModalOpen(false);
@@ -52,16 +52,10 @@ const Canvas = () => {
     setSectionTitleInput("");
   };
 
-  const openSetupModal = () => {
-    setModalMode("setup");
-    setPageTitleInput("");
-    setSectionTitleInput("");
-    setModalOpen(true);
-  };
-
   const openPageModal = () => {
     setModalMode("page");
     setPageTitleInput("");
+    setSectionTitleInput("");
     setModalOpen(true);
   };
 
@@ -73,47 +67,21 @@ const Canvas = () => {
   };
 
   const handleSubmitModal = () => {
-    if (modalMode === "setup") {
-      const pt = pageTitleInput.trim();
-      const st = sectionTitleInput.trim();
-      if (!pt || !st) {
-        alert("Please enter both a page title and a section title.");
-        return;
-      }
-      addPage({ label: pt });
-      const updatedPages = useFormBuilderStore.getState().currentForm.pages;
-      const newPage = updatedPages[updatedPages.length - 1];
-      if (!newPage) return;
-      addSection(newPage.id, { label: st });
-      const pageAfter = useFormBuilderStore
-        .getState()
-        .currentForm.pages.find((p) => p.id === newPage.id);
-      const newSection =
-        pageAfter?.sections[pageAfter.sections.length - 1];
-      if (newSection) {
-        setSelection({
-          type: "section",
-          pageId: newPage.id,
-          sectionId: newSection.id,
-        });
-      }
-      closeModal();
-      return;
-    }
-
     if (modalMode === "page") {
       const pt = pageTitleInput.trim();
       if (!pt) {
-        alert("Please enter a page title.");
+        alert("Please enter a page name.");
         return;
       }
       addPage({ label: pt });
       const updatedPages = useFormBuilderStore.getState().currentForm.pages;
       const newlyCreatedPage = updatedPages[updatedPages.length - 1];
-      if (newlyCreatedPage) {
-        setSelection({ type: "page", pageId: newlyCreatedPage.id });
-      }
-      closeModal();
+      if (!newlyCreatedPage) return;
+      setSelection({ type: "page", pageId: newlyCreatedPage.id });
+      setPageTitleInput("");
+      setSectionTitleInput("");
+      setModalMode("section");
+      setModalOpen(true);
       return;
     }
 
@@ -121,7 +89,7 @@ const Canvas = () => {
       if (!activePage) return;
       const st = sectionTitleInput.trim();
       if (!st) {
-        alert("Please enter a section title.");
+        alert("Please enter a section name.");
         return;
       }
       addSection(activePage.id, { label: st });
@@ -141,22 +109,13 @@ const Canvas = () => {
     }
   };
 
-  const modalCopy =
-    modalMode === "setup"
-      ? {
-          title: "Create your first page",
-          description:
-            "Enter a page title and a section title before you add fields.",
-        }
-      : modalMode === "page"
-        ? {
-            title: "Add page",
-            description: "Enter a title for the new page.",
-          }
-        : {
-            title: "Add section",
-            description: "Enter a title for the new section.",
-          };
+  const modalTitle =
+    modalMode === "page" ? "Name your page" : "Name your section";
+
+  const modalDescription =
+    modalMode === "page"
+      ? "Step 1 of 3: create a page. Next you will name a section, then you can add answers (fields)."
+      : `Step 2 of 3: add a section to "${activePage?.label || "this page"}". After this you can drag field types from the left as answers.`;
 
   return (
     <>
@@ -178,11 +137,20 @@ const Canvas = () => {
             )}
           </div>
 
+          <p className="mb-4 text-xs font-medium tracking-wide text-slate-500 uppercase">
+            Build order: <span className="text-slate-800">Page</span>
+            <span className="mx-1.5 text-slate-400">→</span>
+            <span className="text-slate-800">Section</span>
+            <span className="mx-1.5 text-slate-400">→</span>
+            <span className="text-slate-800">Answers (fields)</span>
+          </p>
+
           {currentForm.pages.length > 0 ? (
             <div className="mb-6 flex flex-wrap items-center gap-2">
               {currentForm.pages.map((page, index) => (
                 <button
                   key={page.id}
+                  type="button"
                   onClick={() =>
                     setSelection({ type: "page", pageId: page.id })
                   }
@@ -196,19 +164,24 @@ const Canvas = () => {
                 </button>
               ))}
               <button
+                type="button"
                 onClick={openPageModal}
                 className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
               >
-                + Add Page
+                + Add page
               </button>
-              {activePage ? (
-                <button
-                  onClick={openSectionModal}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  + Add Section
-                </button>
-              ) : null}
+            </div>
+          ) : null}
+
+          {activePage && !hasSections ? (
+            <div
+              className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+              role="status"
+            >
+              <strong className="font-semibold">Next:</strong> name a section
+              for &quot;{activePage.label || "this page"}&quot; using{" "}
+              <strong>+ Add section</strong> below, or the button in the empty
+              area.
             </div>
           ) : null}
 
@@ -216,85 +189,91 @@ const Canvas = () => {
             <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-8 py-12 text-center">
               <div className="mb-4 text-5xl">🗂️</div>
               <h3 className="mb-2 text-lg font-medium text-slate-700">
-                No pages created yet
+                Start with a page
               </h3>
               <p className="text-sm text-slate-500">
-                Create a page and section first to start building your form.
+                Step 1: name your first page. Then you will name a section
+                before adding any answers.
               </p>
               <button
-                onClick={openSetupModal}
+                type="button"
+                onClick={openPageModal}
                 className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
               >
-                Create first page & section
+                Create first page
               </button>
             </div>
           ) : !hasSections ? (
             <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-8 py-12 text-center">
               <div className="mb-4 text-5xl">🧱</div>
               <h3 className="mb-2 text-lg font-medium text-slate-700">
-                No sections in this page
+                Add a section on this page
               </h3>
               <p className="text-sm text-slate-500">
-                Add a section (with a title) before you drop fields.
+                Step 2: sections hold your questions. Use{" "}
+                <strong>+ Add section</strong> in the bar above, or here.
               </p>
               <button
+                type="button"
                 onClick={openSectionModal}
                 className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
               >
-                Add first section
+                Name first section
               </button>
             </div>
-          ) : isEmpty ? (
-            <div
-              className={`rounded-2xl border-2 border-dashed px-8 py-12 text-center transition-all ${
-                isOver
-                  ? "border-indigo-300 bg-indigo-50"
-                  : "border-slate-300 bg-slate-50"
-              }`}
-            >
-              <div className="mb-4 text-5xl">📋</div>
-              <h3 className="mb-2 text-lg font-medium text-slate-700">
-                Drop fields here to start building
-              </h3>
-              <p className="text-sm text-slate-500">
-                Drag field types from the left panel to create your form
-              </p>
-            </div>
           ) : (
-            activeSections.map((section) => (
-              <div
-                key={section.id}
-                className="mb-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4"
-              >
-                <div className="mb-3 border-b border-slate-200 pb-2">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    {section.label}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    {section.questions.length} question
-                    {section.questions.length === 1 ? "" : "s"}
-                  </p>
-                </div>
-
-                <SortableContext
-                  items={section.questions.map((f) => f.id)}
-                  strategy={verticalListSortingStrategy}
+            <div className="space-y-4">
+              {activeSections.map((section) => (
+                <div
+                  key={section.id}
+                  className="mb-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4"
                 >
-                  <div className="flex flex-col gap-4">
-                    {section.questions
-                      .sort((a, b) => a.order - b.order)
-                      .map((field) => (
-                        <CanvasField
-                          key={field.id}
-                          question={field}
-                          pageId={activePage.id}
-                          sectionId={section.id}
-                        />
-                      ))}
+                  <div className="mb-3 border-b border-slate-200 pb-2">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {section.label}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {section.questions.length} question
+                      {section.questions.length === 1 ? "" : "s"}
+                    </p>
                   </div>
-                </SortableContext>
-              </div>
-            ))
+
+                  {section.questions.length > 0 ? (
+                    <SortableContext
+                      items={section.questions.map((f) => f.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="flex flex-col gap-4">
+                        {section.questions
+                          .sort((a, b) => a.order - b.order)
+                          .map((field) => (
+                            <CanvasField
+                              key={field.id}
+                              question={field}
+                              pageId={activePage.id}
+                              sectionId={section.id}
+                            />
+                          ))}
+                      </div>
+                    </SortableContext>
+                  ) : (
+                    <div className="text-sm text-slate-600">
+                      Add your first question
+                    </div>
+                  )}
+                </div>
+              ))}
+              {activePage ? (
+                <button
+                  type="button"
+                  onClick={openSectionModal}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  title="Add another section on this page"
+                >
+                  + Add new section
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
       </main>
@@ -307,14 +286,14 @@ const Canvas = () => {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{modalCopy.title}</DialogTitle>
-            <DialogDescription>{modalCopy.description}</DialogDescription>
+            <DialogTitle>{modalTitle}</DialogTitle>
+            <DialogDescription>{modalDescription}</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
-            {(modalMode === "setup" || modalMode === "page") && (
+            {modalMode === "page" && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="canvas-page-title">Page title</Label>
+                <Label htmlFor="canvas-page-title">Page name</Label>
                 <Input
                   id="canvas-page-title"
                   type="text"
@@ -327,12 +306,13 @@ const Canvas = () => {
                       handleSubmitModal();
                     }
                   }}
+                  autoFocus
                 />
               </div>
             )}
-            {(modalMode === "setup" || modalMode === "section") && (
+            {modalMode === "section" && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="canvas-section-title">Section title</Label>
+                <Label htmlFor="canvas-section-title">Section name</Label>
                 <Input
                   id="canvas-section-title"
                   type="text"
@@ -345,6 +325,7 @@ const Canvas = () => {
                       handleSubmitModal();
                     }
                   }}
+                  autoFocus
                 />
               </div>
             )}
@@ -355,11 +336,7 @@ const Canvas = () => {
               Cancel
             </Button>
             <Button type="button" onClick={handleSubmitModal}>
-              {modalMode === "setup"
-                ? "Create page & section"
-                : modalMode === "page"
-                  ? "Add page"
-                  : "Add section"}
+              {modalMode === "page" ? "Continue" : "Add section"}
             </Button>
           </DialogFooter>
         </DialogContent>

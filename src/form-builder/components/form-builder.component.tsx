@@ -299,7 +299,7 @@ export const FormBuilder: React.FC = () => {
             onDragEnd={handleDragEnd}
           >
             {/* Left: Fields Palette */}
-            <FieldsPalette />
+            <FieldsPalette fieldsEnabled={Boolean(activeSection)} />
 
             {/* Center: Canvas */}
             <Canvas />

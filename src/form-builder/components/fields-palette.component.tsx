@@ -104,23 +104,32 @@ const FIELD_DEFINITIONS: FieldDefinition[] = [
 
 interface DraggableFieldProps {
   field: FieldDefinition;
+  disabled?: boolean;
 }
 
-const DraggableField: React.FC<DraggableFieldProps> = ({ field }) => {
+const DraggableField: React.FC<DraggableFieldProps> = ({
+  field,
+  disabled = false,
+}) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${field.type}`,
     data: { field },
+    disabled,
   });
 
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`mb-2 cursor-grab rounded-xl border px-3 py-3 transition-all ${
-        isDragging
-          ? "border-indigo-200 bg-indigo-50 shadow-sm"
-          : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm"
+      {...(disabled ? {} : listeners)}
+      {...(disabled ? {} : attributes)}
+      className={`mb-2 rounded-xl border px-3 py-3 transition-all ${
+        disabled
+          ? "cursor-not-allowed border-slate-100 bg-slate-100/80 opacity-60"
+          : `cursor-grab ${
+              isDragging
+                ? "border-indigo-200 bg-indigo-50 shadow-sm"
+                : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm"
+            }`
       }`}
     >
       <div className="flex items-center gap-3">
@@ -134,16 +143,31 @@ const DraggableField: React.FC<DraggableFieldProps> = ({ field }) => {
   );
 };
 
-export const FieldsPalette: React.FC = () => {
+interface FieldsPaletteProps {
+  /** When false, fields cannot be dragged until the canvas has at least one section. */
+  fieldsEnabled?: boolean;
+}
+
+export const FieldsPalette: React.FC<FieldsPaletteProps> = ({
+  fieldsEnabled = true,
+}) => {
   return (
     <aside className="h-full w-72 overflow-y-auto border-r border-slate-200 bg-slate-50/70 p-4">
-      <h3 className="mb-1 text-base font-semibold text-slate-900">Field Types</h3>
+      <h3 className="mb-1 text-base font-semibold text-slate-900">
+        Answers / field types
+      </h3>
       <p className="mb-4 text-xs text-slate-500">
-        Drag and drop fields to the canvas
+        {fieldsEnabled
+          ? "Drag fields into a section on the canvas."
+          : "Add a page, then a section, before you can drop answers here."}
       </p>
       <div>
         {FIELD_DEFINITIONS.map((field) => (
-          <DraggableField key={field.type} field={field} />
+          <DraggableField
+            key={field.type}
+            field={field}
+            disabled={!fieldsEnabled}
+          />
         ))}
       </div>
     </aside>
