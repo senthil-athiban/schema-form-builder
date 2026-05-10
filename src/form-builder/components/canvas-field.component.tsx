@@ -1,11 +1,23 @@
-// src/features/form-builder/components/CanvasField.tsx
-
-import React from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Copy, Trash2, GripVertical, EyeOff } from 'lucide-react';
-import { useFormBuilderStore } from '../store/form-builder-store';
-import type { FormQuestion } from '../../shared/types';
+import React from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  Copy,
+  Trash2,
+  GripVertical,
+  EyeOff,
+  Mail,
+  Settings2,
+  Star,
+} from "lucide-react";
+import { useFormBuilderStore } from "../store/form-builder-store";
+import type { FormQuestion } from "../../shared/types";
+import { cn } from "@/shared/lib/utils";
+import { Label } from "@/shared/components/ui/label";
+import { Input } from "@/shared/components/ui/input";
+import { Textarea } from "@/shared/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 
 interface CanvasFieldProps {
   question: FormQuestion;
@@ -13,12 +25,312 @@ interface CanvasFieldProps {
   sectionId: string;
 }
 
-export const CanvasField: React.FC<CanvasFieldProps> = ({ question, pageId, sectionId }) => {
-  const {
-    selection,
-    setSelection,
-    deleteQuestion,
-  } = useFormBuilderStore();
+function widthStyle(width: FormQuestion["width"]): React.CSSProperties {
+  if (!width || width === "100%") return { width: "100%" };
+  return { width, maxWidth: "100%" };
+}
+
+function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
+  const placeholder =
+    typeof question.placeholder === "string" ? question.placeholder : "";
+  const options = question.config?.options ?? [];
+  const previewWrap = "pointer-events-none select-none";
+
+  switch (question.type) {
+    case "email":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <div className="relative">
+            <Mail
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              readOnly
+              tabIndex={-1}
+              type="email"
+              placeholder={placeholder || "email@example.com"}
+              className="bg-background pl-9"
+              aria-hidden
+            />
+          </div>
+        </div>
+      );
+
+    case "number":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <Input
+            readOnly
+            tabIndex={-1}
+            type="number"
+            placeholder={placeholder || "0"}
+            className="bg-background"
+          />
+        </div>
+      );
+
+    case "textarea":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <Textarea
+            readOnly
+            tabIndex={-1}
+            placeholder={placeholder || "Type here…"}
+            className="min-h-[88px] resize-none bg-background"
+          />
+        </div>
+      );
+
+    case "select": {
+      const value =
+        options[0]?.value !== undefined ? String(options[0].value) : "";
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <select
+            className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm shadow-none outline-none"
+            disabled
+            value={value}
+          >
+            {options.length === 0 ? (
+              <option value="">Select…</option>
+            ) : (
+              options.map((opt) => (
+                <option key={String(opt.value)} value={String(opt.value)}>
+                  {opt.label}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+      );
+    }
+
+    case "radio":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <RadioGroup
+            value={
+              options[0]?.value !== undefined
+                ? String(options[0].value)
+                : undefined
+            }
+            className="gap-3"
+          >
+            {options.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No options yet</p>
+            ) : (
+              options.map((opt) => (
+                <div key={String(opt.value)} className="flex items-center gap-2">
+                  <RadioGroupItem
+                    value={String(opt.value)}
+                    id={`${question.id}-${opt.value}`}
+                  />
+                  <Label
+                    htmlFor={`${question.id}-${opt.value}`}
+                    className="font-normal text-muted-foreground"
+                  >
+                    {opt.label}
+                  </Label>
+                </div>
+              ))
+            )}
+          </RadioGroup>
+        </div>
+      );
+
+    case "checkbox":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          {options.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {options.map((opt) => (
+                <div key={String(opt.value)} className="flex items-center gap-2">
+                  <Checkbox checked={false} disabled id={`${question.id}-cb-${opt.value}`} />
+                  <Label
+                    htmlFor={`${question.id}-cb-${opt.value}`}
+                    className="font-normal text-muted-foreground"
+                  >
+                    {opt.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Checkbox checked={false} disabled id={`${question.id}-single`} />
+              <Label htmlFor={`${question.id}-single`} className="font-normal">
+                Checkbox
+              </Label>
+            </div>
+          )}
+        </div>
+      );
+
+    case "multiselect":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <div className="flex flex-col gap-2">
+            {options.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No options yet</p>
+            ) : (
+              options.map((opt) => (
+                <div key={String(opt.value)} className="flex items-center gap-2">
+                  <Checkbox id={`${question.id}-ms-${opt.value}`} />
+                  <Label
+                    htmlFor={`${question.id}-ms-${opt.value}`}
+                    className="font-normal text-muted-foreground"
+                  >
+                    {opt.label}
+                  </Label>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+
+    case "date":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <Input readOnly tabIndex={-1} type="date" className="bg-background" />
+        </div>
+      );
+
+    case "time":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <Input readOnly tabIndex={-1} type="time" className="bg-background" />
+        </div>
+      );
+
+    case "file":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <div className="flex h-9 items-center rounded-lg border border-dashed border-input bg-muted/30 px-3 text-xs text-muted-foreground">
+            Choose file…
+          </div>
+        </div>
+      );
+
+    case "slider": {
+      const min = question.config?.min ?? 0;
+      const max = question.config?.max ?? 100;
+      const step = question.config?.step ?? 1;
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            defaultValue={min}
+            disabled
+            className="w-full accent-primary"
+          />
+        </div>
+      );
+    }
+
+    case "rating":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <div className="flex gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                className="size-6 fill-amber-400 text-amber-400 opacity-40"
+                aria-hidden
+              />
+            ))}
+          </div>
+        </div>
+      );
+
+    case "phone":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <Input
+            readOnly
+            tabIndex={-1}
+            type="tel"
+            placeholder={placeholder || "(555) 000-0000"}
+            className="bg-background"
+          />
+        </div>
+      );
+
+    case "url":
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <Input
+            readOnly
+            tabIndex={-1}
+            type="url"
+            placeholder={placeholder || "https://"}
+            className="bg-background"
+          />
+        </div>
+      );
+
+    case "section":
+      return (
+        <div
+          className={cn(
+            previewWrap,
+            "rounded-lg border border-dashed border-muted-foreground/25 bg-muted/20 px-3 py-4 text-center text-sm text-muted-foreground",
+          )}
+          style={widthStyle(question.width)}
+        >
+          Section group (questions inside belong to this page flow)
+        </div>
+      );
+
+    case "html":
+      return (
+        <div
+          className={cn(
+            previewWrap,
+            "rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-600",
+          )}
+          style={widthStyle(question.width)}
+        >
+          {question.config?.content ? (
+            <div
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: String(question.config.content),
+              }}
+            />
+          ) : (
+            <span className="italic text-muted-foreground">Rich text / HTML block</span>
+          )}
+        </div>
+      );
+
+    case "text":
+    default:
+      return (
+        <div className={previewWrap} style={widthStyle(question.width)}>
+          <Input
+            readOnly
+            tabIndex={-1}
+            type="text"
+            placeholder={placeholder || "Type your answer…"}
+            className="bg-background"
+          />
+        </div>
+      );
+  }
+}
+
+export const CanvasField: React.FC<CanvasFieldProps> = ({
+  question,
+  pageId,
+  sectionId,
+}) => {
+  const { selection, setSelection, deleteQuestion, addQuestion, updateQuestion } =
+    useFormBuilderStore();
 
   const {
     attributes,
@@ -36,118 +348,145 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({ question, pageId, sect
   };
 
   const isSelected =
-  selection?.type === "question" &&
-  selection.pageId === pageId &&
-  selection.sectionId === sectionId &&
-  selection.questionId === question.id;
+    selection?.type === "question" &&
+    selection.pageId === pageId &&
+    selection.sectionId === sectionId &&
+    selection.questionId === question.id;
 
-  const getFieldTypeIcon = (type: string) => {
-    const icons: Record<string, string> = {
-      text: '📝',
-      email: '📧',
-      number: '🔢',
-      textarea: '📄',
-      select: '📋',
-      multiselect: '☑️',
-      radio: '🔘',
-      checkbox: '✅',
-      date: '📅',
-      time: '🕐',
-    };
-    return icons[type] || '📝';
+  const duplicateQuestion = () => {
+    const section = useFormBuilderStore
+      .getState()
+      .currentForm.pages.find((p) => p.id === pageId)
+      ?.sections.find((s) => s.id === sectionId);
+    const idx = section?.questions.findIndex((q) => q.id === question.id) ?? -1;
+    const rest = { ...question };
+    delete rest.id;
+    addQuestion(
+      pageId,
+      sectionId,
+      {
+        ...rest,
+        label: `${question.label} (copy)`,
+        name: `${question.name}_copy_${Math.random().toString(36).slice(2, 9)}`,
+      },
+      idx >= 0 ? idx + 1 : undefined,
+    );
+    const updated = useFormBuilderStore
+      .getState()
+      .currentForm.pages.find((p) => p.id === pageId)
+      ?.sections.find((s) => s.id === sectionId);
+    const qs = updated?.questions ?? [];
+    const newQ =
+      idx >= 0 ? qs[idx + 1] : qs[qs.length - 1];
+    if (newQ) {
+      setSelection({
+        type: "question",
+        pageId,
+        sectionId,
+        questionId: newQ.id,
+      });
+    }
   };
+
+  const updateQuestionLabel = (label: string) => {
+    updateQuestion(pageId, sectionId, question.id, { label });
+  }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`cursor-pointer rounded-2xl bg-white p-4 transition-all ${
+      className={cn(
+        "relative cursor-pointer rounded-2xl bg-white p-4 transition-all",
         isSelected
-          ? 'border-2 border-indigo-500 shadow-[0_0_0_3px_rgba(99,102,241,0.12)]'
+          ? "border-2 border-[#2563eb] shadow-[0_0_0_3px_rgba(37,99,235,0.15)]"
           : isDragging
-          ? 'border border-slate-200 shadow-lg'
-          : 'border border-slate-200 hover:border-indigo-200 hover:shadow-sm'
-      }`}
-      onClick={() => setSelection({ type: 'question', pageId, sectionId, questionId: question.id })}
+            ? "border border-slate-200 shadow-lg"
+            : "border border-slate-200 hover:border-indigo-200 hover:shadow-sm",
+      )}
+      onClick={() =>
+        setSelection({
+          type: "question",
+          pageId,
+          sectionId,
+          questionId: question.id,
+        })
+      }
     >
       <div className="flex items-start gap-3">
-        {/* Drag Handle */}
-        <div
+        <button
+          type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="mt-1 cursor-grab rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           onClick={(e) => e.stopPropagation()}
+          aria-label="Drag to reorder"
         >
           <GripVertical size={20} />
-        </div>
+        </button>
 
-        {/* Field Icon */}
-        <div className="mt-0.5 text-2xl">
-          {getFieldTypeIcon(question.type)}
-        </div>
-
-        {/* Field Content */}
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-2">
-            <h4 className="text-sm font-semibold text-slate-900">
-              {question.label}
-            </h4>
-            {question.required && (
-              <span className="text-xs font-semibold text-red-500">
-                *Required
-              </span>
-            )}
-            {question.hidden && (
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input className="text-base font-medium text-slate-900" value={question.label} onChange={(e) => updateQuestionLabel(e.target.value)} />
+            {question.required ? (
+              <span className="text-sm font-semibold text-red-500">*</span>
+            ) : null}
+            {question.hidden ? (
               <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                 <EyeOff size={12} />
                 Hidden
               </span>
-            )}
+            ) : null}
           </div>
-          <p className="my-1 text-xs text-slate-500">
-            {question.type.charAt(0).toUpperCase() + question.type.slice(1)} • {question.name}
-          </p>
-          {question.placeholder && (
-            <p className="my-1 text-xs italic text-slate-400">
-              Placeholder: {question.placeholder}
-            </p>
-          )}
+
+          <CanvasQuestionPreview question={question} />
         </div>
 
-        {/* Action Buttons */}
         <div
-          className="mt-0.5 flex gap-2"
+          className="flex shrink-0 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            // onClick={() => duplicateField(field.id)}
+            type="button"
+            title="Field settings"
+            className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            onClick={() =>
+              setSelection({
+                type: "question",
+                pageId,
+                sectionId,
+                questionId: question.id,
+              })
+            }
+          >
+            <Settings2 size={16} />
+          </button>
+          <button
+            type="button"
             title="Duplicate field"
-            className="flex items-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            onClick={duplicateQuestion}
           >
             <Copy size={16} />
           </button>
           <button
+            type="button"
+            title="Delete field"
+            className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
             onClick={() => {
-              if (window.confirm('Are you sure you want to delete this field?')) {
+              if (
+                window.confirm(
+                  "Are you sure you want to delete this field?",
+                )
+              ) {
                 deleteQuestion(pageId, sectionId, question.id);
               }
             }}
-            title="Delete field"
-            className="flex items-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
           >
             <Trash2 size={16} />
           </button>
         </div>
       </div>
-
-      {/* Field Preview - Show config info */}
-      {question.config?.options && question.config.options.length > 0 && (
-        <div className="ml-10 mt-3 rounded-md bg-slate-50 p-2 text-xs text-slate-500">
-          <strong>Options:</strong>{' '}
-          {question.config.options.slice(0, 3).map((opt) => opt.label).join(', ')}
-          {question.config.options.length > 3 && ` +${question.config.options.length - 3} more`}
-        </div>
-      )}
     </div>
   );
 };
