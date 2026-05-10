@@ -61,10 +61,15 @@ export const FormBuilder: React.FC = () => {
     activePage?.sections.find((s) => s.id === selectedSectionId) ??
     activePage?.sections[0];
 
-    // const activeQuestion =
-    // selection?.type === "question"
-    //   ? activeSection?.questions.find((q) => q.id === selection.questionId)
-    //   : undefined;
+  const totalQuestions = currentForm.pages.reduce(
+    (pageAcc, page) =>
+      pageAcc +
+      page.sections.reduce(
+        (sectionAcc, section) => sectionAcc + section.questions.length,
+        0,
+      ),
+    0,
+  );
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -91,6 +96,10 @@ export const FormBuilder: React.FC = () => {
     if (active.id.toString().startsWith("palette-")) {
       const fieldData = active.data.current?.field;
       if (fieldData) {
+        if (!activePage || !activeSection) {
+          alert("Please create/select a page and section first.");
+          return;
+        }
         addQuestion(activePage.id, activeSection.id, {
           type: fieldData.type,
           label: fieldData.label,
@@ -103,6 +112,7 @@ export const FormBuilder: React.FC = () => {
 
     // Reordering within canvas
     if (active.id !== over.id) {
+      if (!activePage || !activeSection) return;
       const oldIndex = activeSection.questions.findIndex((q) => q.id === active.id);
       const newIndex = activeSection.questions.findIndex((q) => q.id === over.id);
       if (oldIndex !== -1 && newIndex !== -1) {
@@ -130,8 +140,9 @@ export const FormBuilder: React.FC = () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "application/json";
-    input.onchange = (e: any) => {
-      const file = e.target.files[0];
+    input.onchange = (e: Event) => {
+      const target = e.target as HTMLInputElement | null;
+      const file = target?.files?.[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -176,7 +187,7 @@ export const FormBuilder: React.FC = () => {
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-slate-900">📋 Form Builder</h1>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-            {activeSection.questions.length} fields
+            {totalQuestions} questions
           </span>
         </div>
 
