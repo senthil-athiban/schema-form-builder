@@ -45,7 +45,7 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
   // console.log('question:', question)
   const placeholder =
     typeof question.placeholder === "string" ? question.placeholder : "";
-  const previewWrap = "pointer-events-none select-none";
+  const previewWrap = "";
 
   switch (question.type) {
     case "email":
@@ -57,8 +57,8 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
               aria-hidden
             />
             <Input
-              readOnly
               tabIndex={-1}
+              disabled={question.disabled}
               type="email"
               placeholder={placeholder || "email@example.com"}
               className="bg-background pl-9"
@@ -72,7 +72,7 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
       return (
         <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input
-            readOnly
+            disabled={question.disabled}
             tabIndex={-1}
             type="number"
             placeholder={placeholder || "0"}
@@ -85,7 +85,7 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
       return (
         <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Textarea
-            readOnly
+            disabled={question.disabled}
             tabIndex={-1}
             placeholder={placeholder || "Type here…"}
             className="min-h-[88px] resize-none bg-background"
@@ -172,7 +172,7 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
       return (
         <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input
-            readOnly
+            disabled={question.disabled}
             tabIndex={-1}
             type="tel"
             placeholder={placeholder || "(555) 000-0000"}
@@ -185,7 +185,7 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
       return (
         <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input
-            readOnly
+            disabled={question.disabled}
             tabIndex={-1}
             type="url"
             placeholder={placeholder || "https://"}
@@ -236,7 +236,7 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
       return (
         <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input
-            readOnly
+            disabled={question.disabled}
             tabIndex={-1}
             type="text"
             placeholder={placeholder || "Type your answer…"}
@@ -332,12 +332,15 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative cursor-pointer rounded-2xl bg-white p-4 transition-all",
+        "relative cursor-pointer rounded-2xl p-4 transition-all",
+        question.hidden ? "bg-slate-100/70" : "bg-white",
         isSelected
           ? "border-2 border-[#2563eb] shadow-[0_0_0_3px_rgba(37,99,235,0.15)]"
           : isDragging
             ? "border border-slate-200 shadow-lg"
-            : "border border-slate-200 hover:border-indigo-200 hover:shadow-sm",
+            : question.hidden
+              ? "border border-slate-300 hover:border-slate-400"
+              : "border border-slate-200 hover:border-indigo-200 hover:shadow-sm",
       )}
       onClick={() =>
         setSelection({
@@ -348,37 +351,42 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
         })
       }
     >
+      {question.hidden ? (
+        <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-600 shadow-sm">
+          <EyeOff size={12} />
+          Hidden
+        </span>
+      ) : null}
+
       <div className="flex items-center gap-3">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="mt-1 cursor-grab rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className={cn(
+            "mt-1 cursor-grab rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600",
+            question.hidden && "opacity-60",
+          )}
           onClick={(e) => e.stopPropagation()}
           aria-label="Drag to reorder"
         >
           <GripVertical size={20} />
         </button>
 
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className={cn("min-w-0 flex-1 space-y-2", question.hidden && "pr-20")}>
+          <div className="flex items-center gap-2">
+            <div className={cn("inline-flex items-center gap-1.5", question.hidden && "opacity-60")}>
             <input
-              className="text-base font-medium text-slate-900"
-              value={question.label}
+              className="w-auto min-w-0 bg-transparent text-base font-medium text-slate-900 outline-none"
+              value={`${question.label} ${question.required ? "*" : ""} `}
               onChange={(e) => updateQuestionLabel(e.target.value)}
             />
-            {question.required ? (
-              <span className="text-sm font-semibold text-red-500">*</span>
-            ) : null}
-            {question.hidden ? (
-              <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                <EyeOff size={12} />
-                Hidden
-              </span>
-            ) : null}
+            </div>
           </div>
 
-          <CanvasQuestionPreview pageId={pageId} sectionId={sectionId} question={question} />
+          <div className={cn(question.hidden && "opacity-60")}>
+            <CanvasQuestionPreview pageId={pageId} sectionId={sectionId} question={question} />
+          </div>
         </div>
 
         <div
