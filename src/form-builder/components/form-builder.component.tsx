@@ -24,7 +24,7 @@ import { FieldsPalette } from "./fields-palette.component";
 import Canvas from "./canvas.component";
 import { PropertyPanel } from "./property-panel.component";
 import { FormSettings } from "./form-settings.component";
-import { FormRenderer } from "../../form-engine/components/form-renderer";
+import { FormRenderer } from "../../form-engine/components/form-renderer copy";
 import type { BuilderDragData } from "@/shared/types";
 
 export const FormBuilder: React.FC = () => {

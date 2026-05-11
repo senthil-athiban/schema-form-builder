@@ -1,13 +1,14 @@
-// hooks/useConditionalLogic.ts
-
 import { useState, useEffect } from 'react';
-import type { FormSchema } from '../../shared/types/form';
+import type { EngineQuestion } from '../utils/helpers';
+import type { FormSchema } from '@/shared/types';
 
 export const useConditionalLogic = ({
   schema,
+  questions,
   formData,
 }: {
   schema: FormSchema;
+  questions: EngineQuestion[];
   formData: Record<string, any>;
 }) => {
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
@@ -16,17 +17,17 @@ export const useConditionalLogic = ({
   useEffect(() => {
     // Initialize with all non-hidden fields
     const visible = new Set(
-      schema.fields.filter((f) => !f.hidden).map((f) => f.id)
+      questions.filter((f) => !f.hidden).map((f) => f.id)
     );
     const enabled = new Set(
-      schema.fields.filter((f) => !f.disabled).map((f) => f.id)
+      questions.filter((f) => !f.disabled).map((f) => f.id)
     );
 
     // Apply conditional logic
     schema.conditionalLogic?.forEach((rule) => {
       const conditionsMet = rule.conditions.every((condition) => {
         const fieldValue = formData[
-          schema.fields.find((f) => f.id === condition.fieldId)?.name || ''
+          questions.find((f) => f.id === condition.fieldId)?.name || ''
         ];
 
         switch (condition.operator) {

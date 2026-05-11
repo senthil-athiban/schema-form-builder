@@ -1,12 +1,13 @@
 import { z } from "zod";
-import type { FormSchema, FormField } from '../../shared/types/form';
+import type { FormField } from '../../shared/types/form';
+import type { EngineQuestion } from "./helpers";
 export const createZodSchema = (
-  formSchema: FormSchema,
+  questions: EngineQuestion[],
   visibleFields: Set<string>,
 ) => {
   const shape: Record<string, z.ZodTypeAny> = {};
 
-  formSchema.fields.forEach((field) => {
+  questions.forEach((field) => {
       if (!visibleFields.has(field.id)) {
           return;
       }
