@@ -16,6 +16,18 @@ import { cn } from "@/shared/lib/utils";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import TooltipWrapper from "@/shared/components/ui/tooltipwrapper";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/shared/components/ui/alert-dialog";
 import LiveSelectField from "./preview-fields/live-select-field.component";
 import { getWidthStyle } from "../utils";
 import LiveRadioField from "./preview-fields/live-radio-field.component";
@@ -101,15 +113,15 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
 
     case "date":
       return (
-        <div className={previewWrap} style={getWidthStyle(question.width)}>
-          <Input readOnly tabIndex={-1} type="date" className="bg-background" />
+        <div style={getWidthStyle(question.width)}>
+          <Input tabIndex={-1} type="date" className="bg-background" />
         </div>
       );
 
     case "time":
       return (
-        <div className={previewWrap} style={getWidthStyle(question.width)}>
-          <Input readOnly tabIndex={-1} type="time" className="bg-background" />
+        <div style={getWidthStyle(question.width)}>
+          <Input tabIndex={-1} type="time" className="bg-background" />
         </div>
       );
 
@@ -400,22 +412,40 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
             <Copy size={16} />
           </button>
           </TooltipWrapper>
-          <TooltipWrapper tooltip="Delete field" side="top">
-          <button
-            type="button"
-            title="Delete field"
-            className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
-            onClick={() => {
-              if (
-                window.confirm("Are you sure you want to delete this field?")
-              ) {
-                deleteQuestion(pageId, sectionId, question.id);
-              }
-            }}
-          >
-            <Trash2 size={16} />
-          </button>
-          </TooltipWrapper>
+          <AlertDialog>
+            <TooltipWrapper tooltip="Delete field" side="top">
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  title="Delete field"
+                  className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </AlertDialogTrigger>
+            </TooltipWrapper>
+            <AlertDialogContent size="sm">
+              <AlertDialogHeader>
+                <AlertDialogMedia className="bg-red-50 text-red-500">
+                  <Trash2 size={18} />
+                </AlertDialogMedia>
+                <AlertDialogTitle>Delete this field?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove &quot;{question.label}&quot; from the
+                  section. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => deleteQuestion(pageId, sectionId, question.id)}
+                >
+                  Delete field
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </div>
