@@ -32,6 +32,7 @@ export const FormBuilder: React.FC = () => {
     currentForm,
     addQuestion,
     reorderQuestions,
+    deleteQuestion,
     mode,
     setMode,
     undo,
@@ -93,12 +94,12 @@ export const FormBuilder: React.FC = () => {
       ?.sections.find((s) => s.id === sectionId);
   };
 
-  // const getQuestion = (pageId: string, sectionId: string, questionId: string) => {
-  //   return currentForm.pages
-  //     .find((p) => p.id === pageId)
-  //     ?.sections.find((s) => s.id === sectionId)
-  //     ?.questions.find((q) => q.id === questionId);
-  // };
+  const getQuestion = (pageId: string, sectionId: string, questionId: string) => {
+    return currentForm.pages
+      .find((p) => p.id === pageId)
+      ?.sections.find((s) => s.id === sectionId)
+      ?.questions.find((q) => q.id === questionId);
+  };
 
   const getDropTarget = (over: DragEndEvent["over"]) => {
     const overData = over?.data.current as BuilderDragData;
@@ -172,10 +173,25 @@ export const FormBuilder: React.FC = () => {
     if (activeData.kind === "question-sortable") {
       if (!dropTarget) return;
 
+      // handle swap of questions between sections
       if (activeData.sectionId !== dropTarget.sectionId) {
+        // const activeSection = getSection(activeData.pageId, activeData.sectionId);
+        const dropTargetSection = getSection(dropTarget.pageId, dropTarget.sectionId);
+        const insertIndex = dropTargetSection.questions.length > 0 ? dropTargetSection.questions.length - 1 : 0;
+        const questionToSwap = getQuestion(activeData.pageId, activeData.sectionId, activeData.questionId);
+        if (!questionToSwap) return;
+        
+        deleteQuestion(activeData.pageId, activeData.sectionId, activeData.questionId);
+        addQuestion(dropTarget.pageId, dropTarget.sectionId, {
+          type: questionToSwap.type,
+          label: questionToSwap.label,
+          name: questionToSwap.name,
+          config: questionToSwap.config,
+        }, insertIndex);
         return;
       }
 
+      // handle reordering of questions within a section
       const targetSection = getSection(dropTarget.pageId, dropTarget.sectionId);
       
       if (!targetSection) {
