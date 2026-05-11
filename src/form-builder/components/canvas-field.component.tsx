@@ -18,6 +18,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
 import { Checkbox } from "@/shared/components/ui/checkbox";
+import TooltipWrapper from "@/shared/components/ui/tooltipwrapper";
 
 interface CanvasFieldProps {
   question: FormQuestion;
@@ -121,7 +122,10 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
               <p className="text-xs text-muted-foreground">No options yet</p>
             ) : (
               options.map((opt) => (
-                <div key={String(opt.value)} className="flex items-center gap-2">
+                <div
+                  key={String(opt.value)}
+                  className="flex items-center gap-2"
+                >
                   <RadioGroupItem
                     value={String(opt.value)}
                     id={`${question.id}-${opt.value}`}
@@ -145,8 +149,15 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
           {options.length > 0 ? (
             <div className="flex flex-col gap-2">
               {options.map((opt) => (
-                <div key={String(opt.value)} className="flex items-center gap-2">
-                  <Checkbox checked={false} disabled id={`${question.id}-cb-${opt.value}`} />
+                <div
+                  key={String(opt.value)}
+                  className="flex items-center gap-2"
+                >
+                  <Checkbox
+                    checked={false}
+                    disabled
+                    id={`${question.id}-cb-${opt.value}`}
+                  />
                   <Label
                     htmlFor={`${question.id}-cb-${opt.value}`}
                     className="font-normal text-muted-foreground"
@@ -175,7 +186,10 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
               <p className="text-xs text-muted-foreground">No options yet</p>
             ) : (
               options.map((opt) => (
-                <div key={String(opt.value)} className="flex items-center gap-2">
+                <div
+                  key={String(opt.value)}
+                  className="flex items-center gap-2"
+                >
                   <Checkbox id={`${question.id}-ms-${opt.value}`} />
                   <Label
                     htmlFor={`${question.id}-ms-${opt.value}`}
@@ -303,7 +317,9 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
               }}
             />
           ) : (
-            <span className="italic text-muted-foreground">Rich text / HTML block</span>
+            <span className="italic text-muted-foreground">
+              Rich text / HTML block
+            </span>
           )}
         </div>
       );
@@ -329,8 +345,13 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
   pageId,
   sectionId,
 }) => {
-  const { selection, setSelection, deleteQuestion, addQuestion, updateQuestion } =
-    useFormBuilderStore();
+  const {
+    selection,
+    setSelection,
+    deleteQuestion,
+    addQuestion,
+    updateQuestion,
+  } = useFormBuilderStore();
 
   const {
     attributes,
@@ -339,7 +360,15 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: question.id, data: { kind: "question-sortable", pageId, sectionId, questionId: question.id } });
+  } = useSortable({
+    id: question.id,
+    data: {
+      kind: "question-sortable",
+      pageId,
+      sectionId,
+      questionId: question.id,
+    },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -376,8 +405,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
       .currentForm.pages.find((p) => p.id === pageId)
       ?.sections.find((s) => s.id === sectionId);
     const qs = updated?.questions ?? [];
-    const newQ =
-      idx >= 0 ? qs[idx + 1] : qs[qs.length - 1];
+    const newQ = idx >= 0 ? qs[idx + 1] : qs[qs.length - 1];
     if (newQ) {
       setSelection({
         type: "question",
@@ -390,7 +418,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
 
   const updateQuestionLabel = (label: string) => {
     updateQuestion(pageId, sectionId, question.id, { label });
-  }
+  };
 
   return (
     <div
@@ -413,7 +441,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
         })
       }
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           {...attributes}
@@ -427,7 +455,11 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
 
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <input className="text-base font-medium text-slate-900" value={question.label} onChange={(e) => updateQuestionLabel(e.target.value)} />
+            <input
+              className="text-base font-medium text-slate-900"
+              value={question.label}
+              onChange={(e) => updateQuestionLabel(e.target.value)}
+            />
             {question.required ? (
               <span className="text-sm font-semibold text-red-500">*</span>
             ) : null}
@@ -443,41 +475,44 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
         </div>
 
         <div
-          className="flex shrink-0 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
+          className="flex shrink-0 mt-6 gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            title="Field settings"
-            className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-            onClick={() =>
-              setSelection({
-                type: "question",
-                pageId,
-                sectionId,
-                questionId: question.id,
-              })
-            }
-          >
-            <Settings2 size={16} />
-          </button>
+          <TooltipWrapper tooltip="Field settings" side="top">
+            <button
+              type="button"
+              title="Field settings"
+              className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+              onClick={() =>
+                setSelection({
+                  type: "question",
+                  pageId,
+                  sectionId,
+                  questionId: question.id,
+                })
+              }
+            >
+              <Settings2 size={16} />
+            </button>
+          </TooltipWrapper>
+          <TooltipWrapper tooltip="Duplicate field" side="top">
           <button
             type="button"
             title="Duplicate field"
-            className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
             onClick={duplicateQuestion}
           >
             <Copy size={16} />
           </button>
+          </TooltipWrapper>
+          <TooltipWrapper tooltip="Delete field" side="top">
           <button
             type="button"
             title="Delete field"
-            className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
+            className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
             onClick={() => {
               if (
-                window.confirm(
-                  "Are you sure you want to delete this field?",
-                )
+                window.confirm("Are you sure you want to delete this field?")
               ) {
                 deleteQuestion(pageId, sectionId, question.id);
               }
@@ -485,6 +520,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
           >
             <Trash2 size={16} />
           </button>
+          </TooltipWrapper>
         </div>
       </div>
     </div>
