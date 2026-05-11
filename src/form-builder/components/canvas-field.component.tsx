@@ -13,12 +13,14 @@ import {
 import { useFormBuilderStore } from "../store/form-builder-store";
 import type { FormQuestion } from "../../shared/types";
 import { cn } from "@/shared/lib/utils";
-import { Label } from "@/shared/components/ui/label";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
-import { Checkbox } from "@/shared/components/ui/checkbox";
 import TooltipWrapper from "@/shared/components/ui/tooltipwrapper";
+import LiveSelectField from "./preview-fields/live-select-field.component";
+import { getWidthStyle } from "../utils";
+import LiveRadioField from "./preview-fields/live-radio-field.component";
+import LiveCheckField from "./preview-fields/live-check-field.component";
+import LiveMultiSelect from "./preview-fields/live-multi-select.component";
 
 interface CanvasFieldProps {
   question: FormQuestion;
@@ -26,21 +28,17 @@ interface CanvasFieldProps {
   sectionId: string;
 }
 
-function widthStyle(width: FormQuestion["width"]): React.CSSProperties {
-  if (!width || width === "100%") return { width: "100%" };
-  return { width, maxWidth: "100%" };
-}
 
-function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
+function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string, sectionId: string, question: FormQuestion }) {
+  // console.log('question:', question)
   const placeholder =
     typeof question.placeholder === "string" ? question.placeholder : "";
-  const options = question.config?.options ?? [];
   const previewWrap = "pointer-events-none select-none";
 
   switch (question.type) {
     case "email":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <div className="relative">
             <Mail
               className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
@@ -60,7 +58,7 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
 
     case "number":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input
             readOnly
             tabIndex={-1}
@@ -73,154 +71,51 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
 
     case "textarea":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Textarea
             readOnly
             tabIndex={-1}
             placeholder={placeholder || "Type here…"}
             className="min-h-[88px] resize-none bg-background"
-          />
+          />  
         </div>
       );
 
-    case "select": {
-      const value =
-        options[0]?.value !== undefined ? String(options[0].value) : "";
-      return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
-          <select
-            className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm shadow-none outline-none"
-            disabled
-            value={value}
-          >
-            {options.length === 0 ? (
-              <option value="">Select…</option>
-            ) : (
-              options.map((opt) => (
-                <option key={String(opt.value)} value={String(opt.value)}>
-                  {opt.label}
-                </option>
-              ))
-            )}
-          </select>
-        </div>
-      );
-    }
+    case "select":
+      return <LiveSelectField pageId={pageId} sectionId={sectionId} question={question} />;
 
     case "radio":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
-          <RadioGroup
-            value={
-              options[0]?.value !== undefined
-                ? String(options[0].value)
-                : undefined
-            }
-            className="gap-3"
-          >
-            {options.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No options yet</p>
-            ) : (
-              options.map((opt) => (
-                <div
-                  key={String(opt.value)}
-                  className="flex items-center gap-2"
-                >
-                  <RadioGroupItem
-                    value={String(opt.value)}
-                    id={`${question.id}-${opt.value}`}
-                  />
-                  <Label
-                    htmlFor={`${question.id}-${opt.value}`}
-                    className="font-normal text-muted-foreground"
-                  >
-                    {opt.label}
-                  </Label>
-                </div>
-              ))
-            )}
-          </RadioGroup>
-        </div>
+        <LiveRadioField pageId={pageId} sectionId={sectionId} question={question} />
       );
 
     case "checkbox":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
-          {options.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {options.map((opt) => (
-                <div
-                  key={String(opt.value)}
-                  className="flex items-center gap-2"
-                >
-                  <Checkbox
-                    checked={false}
-                    disabled
-                    id={`${question.id}-cb-${opt.value}`}
-                  />
-                  <Label
-                    htmlFor={`${question.id}-cb-${opt.value}`}
-                    className="font-normal text-muted-foreground"
-                  >
-                    {opt.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Checkbox checked={false} disabled id={`${question.id}-single`} />
-              <Label htmlFor={`${question.id}-single`} className="font-normal">
-                Checkbox
-              </Label>
-            </div>
-          )}
-        </div>
+        <LiveCheckField pageId={pageId} sectionId={sectionId} question={question} />
       );
 
     case "multiselect":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
-          <div className="flex flex-col gap-2">
-            {options.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No options yet</p>
-            ) : (
-              options.map((opt) => (
-                <div
-                  key={String(opt.value)}
-                  className="flex items-center gap-2"
-                >
-                  <Checkbox id={`${question.id}-ms-${opt.value}`} />
-                  <Label
-                    htmlFor={`${question.id}-ms-${opt.value}`}
-                    className="font-normal text-muted-foreground"
-                  >
-                    {opt.label}
-                  </Label>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <LiveMultiSelect pageId={pageId} sectionId={sectionId} question={question} />
       );
 
     case "date":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input readOnly tabIndex={-1} type="date" className="bg-background" />
         </div>
       );
 
     case "time":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input readOnly tabIndex={-1} type="time" className="bg-background" />
         </div>
       );
 
     case "file":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <div className="flex h-9 items-center rounded-lg border border-dashed border-input bg-muted/30 px-3 text-xs text-muted-foreground">
             Choose file…
           </div>
@@ -232,7 +127,7 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
       const max = question.config?.max ?? 100;
       const step = question.config?.step ?? 1;
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <input
             type="range"
             min={min}
@@ -248,7 +143,7 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
 
     case "rating":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <div className="flex gap-1">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star
@@ -263,7 +158,7 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
 
     case "phone":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input
             readOnly
             tabIndex={-1}
@@ -276,7 +171,7 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
 
     case "url":
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input
             readOnly
             tabIndex={-1}
@@ -294,7 +189,7 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
             previewWrap,
             "rounded-lg border border-dashed border-muted-foreground/25 bg-muted/20 px-3 py-4 text-center text-sm text-muted-foreground",
           )}
-          style={widthStyle(question.width)}
+          style={getWidthStyle(question.width)}
         >
           Section group (questions inside belong to this page flow)
         </div>
@@ -307,7 +202,7 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
             previewWrap,
             "rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-600",
           )}
-          style={widthStyle(question.width)}
+          style={getWidthStyle(question.width)}
         >
           {question.config?.content ? (
             <div
@@ -327,7 +222,7 @@ function CanvasQuestionPreview({ question }: { question: FormQuestion }) {
     case "text":
     default:
       return (
-        <div className={previewWrap} style={widthStyle(question.width)}>
+        <div className={previewWrap} style={getWidthStyle(question.width)}>
           <Input
             readOnly
             tabIndex={-1}
@@ -471,7 +366,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
             ) : null}
           </div>
 
-          <CanvasQuestionPreview question={question} />
+          <CanvasQuestionPreview pageId={pageId} sectionId={sectionId} question={question} />
         </div>
 
         <div

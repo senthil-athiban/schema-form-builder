@@ -24,8 +24,8 @@ export const SelectFieldPanel: React.FC<SelectFieldPanelProps> = ({ field }) => 
   const sectionTitleClass = 'mb-4 text-sm font-semibold text-slate-900';
 
   const options = field.config?.options || [];
-  console.log('config:', field)
-  console.log('options:', options)
+  // console.log('config:', field)
+  // console.log('options:', options)
 
   const addOption = () => {
     if (!newOptionLabel.trim()) return;
@@ -81,7 +81,7 @@ export const SelectFieldPanel: React.FC<SelectFieldPanelProps> = ({ field }) => 
           />
         </div>
 
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <label className={labelClass}>Field Name</label>
           <input
             type="text"
@@ -89,7 +89,7 @@ export const SelectFieldPanel: React.FC<SelectFieldPanelProps> = ({ field }) => 
             onChange={(e) => updateCurrentQuestion({ name: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
             className={`${inputClass} font-mono`}
           />
-        </div>
+        </div> */}
 
         {field.type === 'select' && (
           <div className="mb-4">
