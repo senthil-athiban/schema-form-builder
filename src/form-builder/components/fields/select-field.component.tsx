@@ -24,6 +24,8 @@ export const SelectFieldPanel: React.FC<SelectFieldPanelProps> = ({ field }) => 
   const sectionTitleClass = 'mb-4 text-sm font-semibold text-slate-900';
 
   const options = field.config?.options || [];
+  console.log('config:', field)
+  console.log('options:', options)
 
   const addOption = () => {
     if (!newOptionLabel.trim()) return;

@@ -25,6 +25,7 @@ import Canvas from "./canvas.component";
 import { PropertyPanel } from "./property-panel.component";
 import { FormSettings } from "./form-settings.component";
 import { FormRenderer } from "../../form-engine/components/form-renderer";
+import type { BuilderDragData } from "@/shared/types";
 
 export const FormBuilder: React.FC = () => {
   const {
@@ -86,38 +87,121 @@ export const FormBuilder: React.FC = () => {
     setActiveId(event.active.id as string);
   };
 
+  const getSection = (pageId: string, sectionId: string) => {
+    return currentForm.pages
+      .find((p) => p.id === pageId)
+      ?.sections.find((s) => s.id === sectionId);
+  };
+
+  // const getQuestion = (pageId: string, sectionId: string, questionId: string) => {
+  //   return currentForm.pages
+  //     .find((p) => p.id === pageId)
+  //     ?.sections.find((s) => s.id === sectionId)
+  //     ?.questions.find((q) => q.id === questionId);
+  // };
+
+  const getDropTarget = (over: DragEndEvent["over"]) => {
+    const overData = over?.data.current as BuilderDragData;
+
+    if (!overData) return null;
+    if (overData.kind === "section" && overData.pageId && overData.sectionId) {
+      return {
+        pageId: overData.pageId,
+        sectionId: overData.sectionId,
+        questionId: null,
+      };
+    }
+
+    if (
+      overData.kind === "question-sortable" &&
+      overData.pageId &&
+      overData.sectionId &&
+      overData.questionId
+    ) {
+      return {
+        pageId: overData.pageId,
+        sectionId: overData.sectionId,
+        questionId: overData.questionId,
+      };
+    }
+
+    return null;
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    console.log("active", active);
+    console.log("over", over);
     setActiveId(null);
 
     if (!over) return;
 
-    // Dragging from palette to canvas
-    if (active.id.toString().startsWith("palette-")) {
-      const fieldData = active.data.current?.field;
-      if (fieldData) {
-        if (!activePage || !activeSection) {
-          alert("Please create/select a page and section first.");
-          return;
-        }
-        addQuestion(activePage.id, activeSection.id, {
-          type: fieldData.type,
-          label: fieldData.label,
-          name: `${fieldData.type}_${Date.now()}`,
-          config: fieldData.defaultConfig,
-        });
+    const activeData = active.data.current as BuilderDragData;
+    const dropTarget = getDropTarget(over);
+
+    if (!activeData || !dropTarget) return;
+
+    if (activeData.kind === "palette-field") {
+      if (!dropTarget.pageId || !dropTarget.sectionId) {
+        return;
       }
-      return;
+
+      const targetSection = getSection(dropTarget.pageId, dropTarget.sectionId);
+      if (!targetSection) {
+        return;
+      }
+
+      const insertIndex = dropTarget.questionId
+        ? targetSection.questions.findIndex(
+            (q) => q.id === dropTarget.questionId,
+          ) + 1
+        : targetSection.questions.length;
+      addQuestion(
+        dropTarget.pageId,
+        dropTarget.sectionId,
+        {
+          type: activeData.field.type,
+          label: activeData.field.label,
+          name: `${activeData.field.type}_${Date.now()}`,
+          config: activeData.field.defaultConfig,
+        },
+        insertIndex >= 0 ? insertIndex : undefined,
+      );
     }
 
-    // Reordering within canvas
-    if (active.id !== over.id) {
-      if (!activePage || !activeSection) return;
-      const oldIndex = activeSection.questions.findIndex((q) => q.id === active.id);
-      const newIndex = activeSection.questions.findIndex((q) => q.id === over.id);
-      if (oldIndex !== -1 && newIndex !== -1) {
-        reorderQuestions(activePage.id, activeSection.id, oldIndex, newIndex);
+    if (activeData.kind === "question-sortable") {
+      if (!dropTarget) return;
+
+      if (activeData.sectionId !== dropTarget.sectionId) {
+        return;
       }
+
+      const targetSection = getSection(dropTarget.pageId, dropTarget.sectionId);
+      
+      if (!targetSection) {
+        return;
+      }
+
+      const oldIndex = targetSection.questions.findIndex(
+        (q) => q.id === activeData.questionId,
+      );
+      const newIndex =
+        dropTarget.questionId == null
+          ? targetSection.questions.length - 1
+          : targetSection.questions.findIndex(
+              (question) => question.id === dropTarget.questionId,
+            );
+
+
+      if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) {
+        return;
+      }
+      reorderQuestions(
+        dropTarget.pageId,
+        dropTarget.sectionId,
+        oldIndex,
+        newIndex,
+      );
     }
   };
 

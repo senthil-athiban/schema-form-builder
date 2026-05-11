@@ -17,8 +17,42 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
+import type { FormSection } from "@/shared/types";
 
 type CanvasModalMode = "page" | "section";
+
+interface SectionDropZoneProps {
+  pageId: string;
+  section: FormSection;
+  children: React.ReactNode;
+}
+const SectionDropZone = ({
+  pageId,
+  section,
+  children,
+}: SectionDropZoneProps) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `section-drop-${section.id}`,
+    data: {
+      kind: "section",
+      pageId,
+      sectionId: section.id,
+    },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`mb-4 rounded-xl border p-4 transition-colors ${
+        isOver
+          ? "border-indigo-300 bg-indigo-50/60"
+          : "border-slate-200 bg-slate-50/50"
+      }`}
+    >
+      {children}
+    </div>
+  );
+};
 
 const Canvas = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -28,9 +62,9 @@ const Canvas = () => {
 
   const { currentForm, selection, setSelection, addPage, addSection } =
     useFormBuilderStore();
-  const { setNodeRef, isOver } = useDroppable({
-    id: "canvas-drop-zone",
-  });
+  // const { setNodeRef, isOver } = useDroppable({
+  //   id: "canvas-drop-zone",
+  // });
   const selectedPageId =
     selection?.type === "page" ||
     selection?.type === "section" ||
@@ -120,10 +154,8 @@ const Canvas = () => {
   return (
     <>
       <main
-        ref={setNodeRef}
-        className={`min-h-full flex-1 overflow-y-auto p-8 transition-colors ${
-          isOver ? "bg-slate-100" : "bg-white"
-        }`}
+        // ref={setNodeRef}
+        className={`min-h-full flex-1 overflow-y-auto p-8 transition-colors ${"bg-white"}`}
       >
         <div className="mx-auto max-w-4xl">
           <div className="mb-8 border-b-2 border-slate-200 pb-4">
@@ -224,44 +256,50 @@ const Canvas = () => {
           ) : (
             <div className="space-y-4">
               {activeSections.map((section) => (
-                <div
+                <SectionDropZone
+                  pageId={activePage.id}
+                  section={section}
                   key={section.id}
-                  className="mb-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4"
                 >
-                  <div className="mb-3 border-b border-slate-200 pb-2">
-                    <h3 className="text-sm font-semibold text-slate-900">
-                      {section.label}
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      {section.questions.length} question
-                      {section.questions.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-
-                  {section.questions.length > 0 ? (
-                    <SortableContext
-                      items={section.questions.map((f) => f.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      <div className="flex flex-col gap-4">
-                        {section.questions
-                          .sort((a, b) => a.order - b.order)
-                          .map((field) => (
-                            <CanvasField
-                              key={field.id}
-                              question={field}
-                              pageId={activePage.id}
-                              sectionId={section.id}
-                            />
-                          ))}
-                      </div>
-                    </SortableContext>
-                  ) : (
-                    <div className="text-sm text-slate-600">
-                      Add your first question
+                  <div
+                    key={section.id}
+                    className="mb-4 rounded-xl border border-slate-200 bg-slate-50/50 p-4"
+                  >
+                    <div className="mb-3 border-b border-slate-200 pb-2">
+                      <h3 className="text-sm font-semibold text-slate-900">
+                        {section.label}
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        {section.questions.length} question
+                        {section.questions.length === 1 ? "" : "s"}
+                      </p>
                     </div>
-                  )}
-                </div>
+
+                    {section.questions.length > 0 ? (
+                      <SortableContext
+                        items={section.questions.map((f) => f.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="flex flex-col gap-4">
+                          {section.questions
+                            .sort((a, b) => a.order - b.order)
+                            .map((field) => (
+                              <CanvasField
+                                key={field.id}
+                                question={field}
+                                pageId={activePage.id}
+                                sectionId={section.id}
+                              />
+                            ))}
+                        </div>
+                      </SortableContext>
+                    ) : (
+                      <div className="text-sm text-slate-600">
+                        Add your first question
+                      </div>
+                    )}
+                  </div>
+                </SectionDropZone>
               ))}
               {activePage ? (
                 <button

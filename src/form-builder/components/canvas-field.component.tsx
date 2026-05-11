@@ -339,7 +339,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: question.id });
+  } = useSortable({ id: question.id, data: { kind: "question-sortable", pageId, sectionId, questionId: question.id } });
 
   const style = {
     transform: CSS.Transform.toString(transform),

@@ -37,7 +37,7 @@ export const TextFieldPanel: React.FC<TextFieldPanelProps> = ({ field }) => {
           />
         </div>
 
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <label className={labelClass}>Field Name (Key)</label>
           <input
             type="text"
@@ -52,7 +52,7 @@ export const TextFieldPanel: React.FC<TextFieldPanelProps> = ({ field }) => {
           <p className="mt-1 text-xs text-slate-500">
             Used as the key in form data
           </p>
-        </div>
+        </div> */}
 
         <div className="mb-4">
           <label className={labelClass}>Placeholder</label>

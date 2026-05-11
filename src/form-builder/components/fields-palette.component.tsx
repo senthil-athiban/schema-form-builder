@@ -113,7 +113,7 @@ const DraggableField: React.FC<DraggableFieldProps> = ({
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${field.type}`,
-    data: { field },
+    data: { field, kind: "palette-field" },
     disabled,
   });
 
