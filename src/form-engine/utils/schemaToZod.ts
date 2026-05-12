@@ -1,6 +1,13 @@
 import { z } from "zod";
 import type { FormField } from '../../shared/types/form';
 import type { EngineQuestion } from "./helpers";
+
+const withOptionalEmptyString = (schema: z.ZodTypeAny) =>
+  z.preprocess((value) => {
+    if (value === "") return undefined;
+    return value;
+  }, schema.optional());
+
 export const createZodSchema = (
   questions: EngineQuestion[],
   visibleFields: Set<string>,
@@ -15,10 +22,10 @@ export const createZodSchema = (
       let zodField = createFieldZodSchema(field);
 
       if (!field.required) {
-        zodField = zodField.optional();
+        zodField = withOptionalEmptyString(zodField);
       }
 
-      shape[field.name] = zodField;
+      shape[field.id] = zodField;
   });
 
   return z.object(shape);

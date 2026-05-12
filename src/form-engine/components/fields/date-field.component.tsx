@@ -10,7 +10,7 @@ export const DateField: React.FC<BaseFieldProps> = ({
       <input
         type="date"
         id={field.id}
-        {...register(field.name)}
+        {...register(field.id)}
         disabled={disabled}
         min={field.config?.min ? new Date(field.config.min).toISOString().split('T')[0] : undefined}
         max={field.config?.max ? new Date(field.config.max).toISOString().split('T')[0] : undefined}

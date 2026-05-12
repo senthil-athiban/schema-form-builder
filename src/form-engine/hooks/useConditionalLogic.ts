@@ -26,9 +26,7 @@ export const useConditionalLogic = ({
     // Apply conditional logic
     schema.conditionalLogic?.forEach((rule) => {
       const conditionsMet = rule.conditions.every((condition) => {
-        const fieldValue = formData[
-          questions.find((f) => f.id === condition.fieldId)?.name || ''
-        ];
+        const fieldValue = formData[condition.fieldId];
 
         switch (condition.operator) {
           case 'equals':
@@ -72,7 +70,7 @@ export const useConditionalLogic = ({
 
     setVisibleFields(visible);
     setEnabledFields(enabled);
-  }, [formData, schema]);
+  }, [ questions, schema]);
 
   return { visibleFields, enabledFields };
 };

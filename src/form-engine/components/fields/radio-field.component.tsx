@@ -19,7 +19,7 @@ export const RadioField: React.FC<BaseFieldProps> = ({
           >
             <input
               type="radio"
-              {...register(field.name)}
+              {...register(field.id)}
               value={option.value}
               disabled={disabled || option.disabled}
               style={{

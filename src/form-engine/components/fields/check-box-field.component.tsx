@@ -19,7 +19,7 @@ export const CheckboxField: React.FC<BaseFieldProps> = ({
           <input
             type="checkbox"
             id={field.id}
-            {...register(field.name)}
+            {...register(field.id)}
             disabled={disabled}
             style={{
               width: '1rem',
@@ -51,7 +51,7 @@ export const CheckboxField: React.FC<BaseFieldProps> = ({
           >
             <input
               type="checkbox"
-              {...register(field.name)}
+              {...register(field.id)}
               value={option.value}
               disabled={disabled || option.disabled}
               style={{

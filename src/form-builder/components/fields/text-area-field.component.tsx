@@ -41,7 +41,7 @@ export const TextFieldPanel: React.FC<TextFieldPanelProps> = ({ field }) => {
           <label className={labelClass}>Field Name (Key)</label>
           <input
             type="text"
-            value={field.name}
+            value={field.id}
             onChange={(e) =>
               updateCurrentQuestion({
                 name: e.target.value.replace(/\s+/g, "_").toLowerCase(),

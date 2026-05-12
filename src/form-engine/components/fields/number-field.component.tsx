@@ -10,7 +10,7 @@ export const NumberField: React.FC<BaseFieldProps> = ({
       <input
         type="number"
         id={field.id}
-        {...register(field.name, { valueAsNumber: true })}
+        {...register(field.id, { valueAsNumber: true })}
         placeholder={field.placeholder}
         disabled={disabled}
         min={field.config?.min}

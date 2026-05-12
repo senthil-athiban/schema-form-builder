@@ -10,7 +10,7 @@ export const TimeField: React.FC<BaseFieldProps> = ({
       <input
         type="time"
         id={field.id}
-        {...register(field.name)}
+        {...register(field.id)}
         disabled={disabled}
         step={field.config?.step}
         className={`form-input ${error ? 'error' : ''} ${field.styles?.className || ''}`}

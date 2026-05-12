@@ -10,7 +10,7 @@ export const EmailField: React.FC<BaseFieldProps> = ({
       <input
         type="email"
         id={field.id}
-        {...register(field.name)}
+        {...register(field.id)}
         placeholder={field.placeholder}
         disabled={disabled}
         maxLength={field.config?.maxLength}

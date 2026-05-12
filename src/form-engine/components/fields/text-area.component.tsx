@@ -9,7 +9,7 @@ export const TextareaField: React.FC<BaseFieldProps> = ({
     return (
       <textarea
         id={field.id}
-        {...register(field.name)}
+        {...register(field.id)}
         placeholder={field.placeholder}
         disabled={disabled}
         minLength={field.config?.minLength}

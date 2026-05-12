@@ -9,7 +9,7 @@ export const MultiSelectField: React.FC<BaseFieldProps> = ({
     return (
       <select
         id={field.id}
-        {...register(field.name)}
+        {...register(field.id)}
         disabled={disabled}
         multiple
         size={Math.min(field.config?.options?.length || 5, 5)}

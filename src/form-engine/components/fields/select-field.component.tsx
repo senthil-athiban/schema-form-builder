@@ -9,7 +9,7 @@ export const SelectField: React.FC<BaseFieldProps> = ({
 return (
   <select
     id={field.id}
-    {...register(field.name)}
+    {...register(field.id)}
     disabled={disabled}
     className={`form-select ${error ? 'error' : ''} ${field.styles?.className || ''}`}
     style={{

@@ -40,7 +40,7 @@ export const NumberFieldPanel: React.FC<NumberFieldPanelProps> = ({ field }) => 
           <label className={labelClass}>Field Name</label>
           <input
             type="text"
-            value={field.name}
+            value={field.id}
             onChange={(e) => updateCurrentQuestion({ name: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
             className={`${inputClass} font-mono`}
           />

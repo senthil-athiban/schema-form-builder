@@ -10,7 +10,7 @@ export const TextField: React.FC<BaseFieldProps> = ({
       <input
         type="text"
         id={field.id}
-        {...register(field.name)}
+        {...register(field.id)}
         placeholder={field.placeholder}
         disabled={disabled}
         minLength={field.config?.minLength}
