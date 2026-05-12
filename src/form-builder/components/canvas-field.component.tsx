@@ -324,6 +324,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
   };
 
   const updateQuestionLabel = (label: string) => {
+    console.log('label:', label)
     updateQuestion(pageId, sectionId, question.id, { label });
   };
 
@@ -378,7 +379,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
             <div className={cn("inline-flex items-center gap-1.5", question.hidden && "opacity-60")}>
             <input
               className="w-auto min-w-0 bg-transparent text-base font-medium text-slate-900 outline-none"
-              value={`${question.label} ${question.required ? "*" : ""} `}
+              value={`${question.label}${question.required ? "*" : ""}`}
               onChange={(e) => updateQuestionLabel(e.target.value)}
             />
             </div>

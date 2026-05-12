@@ -34,7 +34,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
           />
         </div>
 
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <label className={labelClass}>Field Name</label>
           <input
             type="text"
@@ -42,7 +42,7 @@ export const DateTimeFieldPanel: React.FC<DateTimeFieldPanelProps> = ({ field })
             onChange={(e) => updateCurrentQuestion({ name: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
             className={`${inputClass} font-mono`}
           />
-        </div>
+        </div> */}
 
         <div className="mb-4">
           <label className={labelClass}>Width</label>

@@ -36,7 +36,7 @@ export const NumberFieldPanel: React.FC<NumberFieldPanelProps> = ({ field }) => 
           />
         </div>
 
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <label className={labelClass}>Field Name</label>
           <input
             type="text"
@@ -44,7 +44,7 @@ export const NumberFieldPanel: React.FC<NumberFieldPanelProps> = ({ field }) => 
             onChange={(e) => updateCurrentQuestion({ name: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
             className={`${inputClass} font-mono`}
           />
-        </div>
+        </div> */}
 
         <div className="mb-4">
           <label className={labelClass}>Placeholder</label>
