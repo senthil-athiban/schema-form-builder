@@ -166,6 +166,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
             return false;
         }
       });
+      console.log('conditionsMet:', conditionsMet)
 
       if (conditionsMet) {
         rule.actions.forEach((action) => {

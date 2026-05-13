@@ -131,8 +131,8 @@ export const FormBuilder: React.FC = () => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    console.log("active", active);
-    console.log("over", over);
+    // console.log("active", active);
+    // console.log("over", over);
     setActiveId(null);
 
     if (!over) return;

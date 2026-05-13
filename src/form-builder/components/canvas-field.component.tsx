@@ -1,20 +1,36 @@
-import React from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Copy,
+  EllipsisVertical,
+  GitBranch,
   Trash2,
   GripVertical,
   EyeOff,
   Mail,
   Settings2,
   Star,
+  Zap,
+  Plus,
+  Trash,
 } from "lucide-react";
 import { useFormBuilderStore } from "../store/form-builder-store";
-import type { FormQuestion } from "../../shared/types";
+import type {
+  Action,
+  ActionType,
+  Condition,
+  ConditionalRule,
+  FormQuestion,
+  Operator,
+} from "../../shared/types";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/shared/components/ui/native-select";
 import TooltipWrapper from "@/shared/components/ui/tooltipwrapper";
 import {
   AlertDialog,
@@ -33,24 +49,392 @@ import { getWidthStyle } from "../utils";
 import LiveRadioField from "./preview-fields/live-radio-field.component";
 import LiveCheckField from "./preview-fields/live-check-field.component";
 import LiveMultiSelect from "./preview-fields/live-multi-select.component";
-
+import { v4 as uuidv4 } from "uuid";
 interface CanvasFieldProps {
   question: FormQuestion;
   pageId: string;
   sectionId: string;
 }
 
+function InlineQuestionLogicScaffold({
+  field,
+  questions,
+  logic,
+}: {
+  field: FormQuestion;
+  questions: Array<{
+    id: string;
+    label: string;
+    pageLabel: string;
+    sectionLabel: string;
+  }>;
+  logic: ConditionalRule;
+}) {
+  const targetQuestions = questions.filter(
+    (question) => question.id !== field.id,
+  );
+  const defaultTargetQuestion = targetQuestions[0];
+  const {
+    addConditionalRule,
+    updateConditionalRule,
+    currentForm,
+    deleteConditionalRule,
+  } = useFormBuilderStore();
 
-function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string, sectionId: string, question: FormQuestion }) {
+  const [conditions, setConditions] = useState<Condition[]>(
+    logic.conditions || [{ fieldId: field.id, operator: "equals", value: "" }],
+  );
+  const [actions, setActions] = useState<Action[]>(
+    logic.actions || [{ type: "show", targetFieldId: "" }],
+  );
+
+  const conditionsRef = useRef<Condition[]>(conditions);
+  const actionsRef = useRef<Action[]>(actions);
+
+  const persist = (newConditions: Condition[], newActions: Action[]) => {
+    updateConditionalRule(logic.id, {
+      ...logic,
+      conditions: newConditions,
+      actions: newActions,
+    });
+  }
+
+  const patchConditions = (cb: (conditions: Condition[]) => Condition[]) => {
+    setConditions((prev) => {
+      const next = cb(prev);
+      persist(next, actionsRef.current);
+      return next;
+    })
+  }
+
+  const patchActions = (cb: (actions: Action[]) => Action[]) => {
+    setActions((prev) => {
+      const next = cb(prev);
+      persist(conditionsRef.current, next);
+      return next;
+    })
+  };
+
+  // console.log("currentForm:", currentForm);
+  // console.log("actions:", actions);
+  // console.log("conditions:", conditions);
+
+  const handleAddCondition = () => {
+    addConditionalRule({
+      id: uuidv4(),
+      sourceFieldId: field.id,
+      conditions: [],
+      actions: [],
+    });
+  };
+
+  const handleDeleteLogic = () => {
+    deleteConditionalRule(logic.id);
+  };
+
+  // const updateCondition = () => {
+  //   updateConditionalRule(logic.id, {
+  //     ...logic,
+  //     conditions: conditions,
+  //     actions: actions,
+  //   });
+  // };
+
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+      <div className="space-y-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <GitBranch size={16} className="text-slate-500" />
+              <span>When</span>
+            </div>
+            <button
+              type="button"
+              className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Condition row menu"
+            >
+              <EllipsisVertical size={16} />
+            </button>
+          </div>
+          {conditions.map((condition, index) => (
+            <div className="mt-3 gap-2 flex">
+              <NativeSelect
+                className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
+                defaultValue={condition.fieldId}
+                value={condition.fieldId}
+                aria-label="Condition source field"
+                onChange={(e) =>
+                  setConditions((prev) => {
+                    const newConditions = [...prev];
+                    newConditions[index] = {
+                      ...newConditions[index],
+                      fieldId: e.target.value,
+                    };
+                    return newConditions;
+                  })
+                }
+              >
+                {questions.map((question) => (
+                  <NativeSelectOption key={question.id} value={question.id}>
+                    {question.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+
+              <NativeSelect
+                className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
+                defaultValue={"equals"}
+                value={condition.operator}
+                aria-label="Condition operator"
+                onChange={(e) =>
+                  setConditions((prev) => {
+                    const newConditions = [...prev];
+                    newConditions[index] = {
+                      ...newConditions[index],
+                      operator: e.target.value as Operator,
+                    };
+                    return newConditions;
+                  })
+                }
+              >
+                <NativeSelectOption value="equals">Is</NativeSelectOption>
+                <NativeSelectOption value="notEquals">
+                  Is not
+                </NativeSelectOption>
+                <NativeSelectOption value="contains">
+                  Contains
+                </NativeSelectOption>
+                <NativeSelectOption value="greaterThan">
+                  {">"}
+                </NativeSelectOption>
+                <NativeSelectOption value="lessThan">{"<"}</NativeSelectOption>
+                <NativeSelectOption value="isEmpty">
+                  Is empty
+                </NativeSelectOption>
+                <NativeSelectOption value="isNotEmpty">
+                  Is not empty
+                </NativeSelectOption>
+              </NativeSelect>
+
+              <Input
+                className="h-8 rounded-xl border-slate-200 bg-white text-sm shadow-sm"
+                defaultValue={
+                  condition.value == null ? "" : String(condition.value)
+                  // field.defaultValue == null ? "" : String(field.defaultValue)
+                }
+                onChange={(e) => {
+                  patchConditions((prev) => {
+                    const newConditions = [...prev];
+                    newConditions[index] = {
+                      ...newConditions[index],
+                      value: e.target.value,
+                    };
+                    return newConditions;
+                  });
+                }}
+                placeholder="Value"
+                aria-label="Condition value"
+              />
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-md p-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-600"
+                  onClick={() =>
+                    patchConditions((prev) => {
+                      const newConditions = [...prev];
+                      newConditions.push({
+                        fieldId: field.id,
+                        operator: "equals",
+                        value: "",
+                      });
+                      return newConditions;
+                    })
+                  }
+                >
+                  <Plus size={16} />
+                </button>
+                {conditions.length > 1 && (
+                  <button
+                    type="button"
+                    className="rounded-md p-1.5 text-red-600 transition hover:bg-slate-100 hover:text-slate-600"
+                    onClick={() =>
+                      patchConditions((prev) => {
+                        const newConditions = [...prev];
+                        newConditions.splice(index, 1);
+                        return newConditions;
+                      })
+                    }
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <Zap size={16} className="text-amber-500" />
+              <span>Then</span>
+            </div>
+            <button
+              type="button"
+              className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Action row menu"
+            >
+              <EllipsisVertical size={16} />
+            </button>
+          </div>
+
+          {actions.map((action, idx) => (
+            <div className="mt-3 gap-2 flex">
+              <NativeSelect
+                className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
+                defaultValue="show"
+                value={action.type}
+                aria-label="Action type"
+                onChange={(e) =>
+                  setActions((prev) => {
+                    const newActions = [...prev];
+                    newActions[idx] = {
+                      ...newActions[idx],
+                      type: e.target.value as ActionType,
+                    };
+                    return newActions;
+                  })
+                }
+              >
+                <NativeSelectOption value="show">Show field</NativeSelectOption>
+                <NativeSelectOption value="hide">Hide field</NativeSelectOption>
+                <NativeSelectOption value="enable">
+                  Enable field
+                </NativeSelectOption>
+                <NativeSelectOption value="disable">
+                  Disable field
+                </NativeSelectOption>
+                <NativeSelectOption value="setValue">
+                  Set value
+                </NativeSelectOption>
+              </NativeSelect>
+
+              <NativeSelect
+                className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
+                defaultValue={defaultTargetQuestion?.id}
+                value={action.targetFieldId}
+                aria-label="Action target field"
+                onChange={(e) =>
+                  setActions((prev) => {
+                    const newActions = [...prev];
+                    newActions[idx] = {
+                      ...newActions[idx],
+                      targetFieldId: e.target.value,
+                    };
+                    return newActions;
+                  })
+                }
+              >
+                {targetQuestions.length > 0 ? (
+                  targetQuestions.map((question) => (
+                    <NativeSelectOption key={question.id} value={question.id}>
+                      {question.label}
+                    </NativeSelectOption>
+                  ))
+                ) : (
+                  <NativeSelectOption value={field.id}>
+                    No other field available
+                  </NativeSelectOption>
+                )}
+              </NativeSelect>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-md p-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-600"
+                  onClick={() =>
+                    patchActions((prev) => {
+                      const newActions = [...prev];
+                      newActions.push({
+                        type: "show",
+                        targetFieldId: defaultTargetQuestion?.id,
+                      });
+                      return newActions;
+                    })
+                  }
+                >
+                  <Plus size={16} />
+                </button>
+                {actions.length > 1 && (
+                  <button
+                    type="button"
+                    className="rounded-md p-1.5 text-red-600 transition hover:bg-slate-100 hover:text-slate-600"
+                    onClick={() =>
+                      patchActions((prev) => {
+                        const newActions = [...prev];
+                        newActions.splice(idx, 1);
+                        return newActions;
+                      })
+                    }
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <button
+            type="button"
+            className="rounded-md px-1.5 py-1 font-medium text-slate-600 transition hover:bg-white"
+            onClick={handleAddCondition}
+          >
+            + Add new logic
+          </button>
+          <button
+            type="button"
+            className="rounded-md px-1.5 py-1 gap-x-2 font-medium text-red-600 transition hover:bg-white flex cursor-pointer"
+            onClick={handleDeleteLogic}
+          >
+            <Trash size={14} />
+            Delete logic
+          </button>
+        </div>
+        {/* 
+        <Button type="button" size="sm">
+          Done
+        </Button> */}
+      </div>
+    </div>
+  );
+}
+
+function CanvasQuestionPreview({
+  pageId,
+  sectionId,
+  question,
+}: {
+  pageId: string;
+  sectionId: string;
+  question: FormQuestion;
+}) {
   // console.log('question:', question)
   const placeholder =
     typeof question.placeholder === "string" ? question.placeholder : "";
+  
   const previewWrap = "";
+  
 
   switch (question.type) {
     case "email":
       return (
-        <div className={previewWrap} style={getWidthStyle(question.width)}>
+        <div style={getWidthStyle(question.width)}>
           <div className="relative">
             <Mail
               className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
@@ -89,26 +473,44 @@ function CanvasQuestionPreview({ pageId, sectionId, question }: { pageId: string
             tabIndex={-1}
             placeholder={placeholder || "Type here…"}
             className="min-h-[88px] resize-none bg-background"
-          />  
+          />
         </div>
       );
 
     case "select":
-      return <LiveSelectField pageId={pageId} sectionId={sectionId} question={question} />;
+      return (
+        <LiveSelectField
+          pageId={pageId}
+          sectionId={sectionId}
+          question={question}
+        />
+      );
 
     case "radio":
       return (
-        <LiveRadioField pageId={pageId} sectionId={sectionId} question={question} />
+        <LiveRadioField
+          pageId={pageId}
+          sectionId={sectionId}
+          question={question}
+        />
       );
 
     case "checkbox":
       return (
-        <LiveCheckField pageId={pageId} sectionId={sectionId} question={question} />
+        <LiveCheckField
+          pageId={pageId}
+          sectionId={sectionId}
+          question={question}
+        />
       );
 
     case "multiselect":
       return (
-        <LiveMultiSelect pageId={pageId} sectionId={sectionId} question={question} />
+        <LiveMultiSelect
+          pageId={pageId}
+          sectionId={sectionId}
+          question={question}
+        />
       );
 
     case "date":
@@ -253,11 +655,13 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
   sectionId,
 }) => {
   const {
+    currentForm,
     selection,
     setSelection,
     deleteQuestion,
     addQuestion,
     updateQuestion,
+    addConditionalRule,
   } = useFormBuilderStore();
 
   const {
@@ -288,6 +692,21 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
     selection.pageId === pageId &&
     selection.sectionId === sectionId &&
     selection.questionId === question.id;
+
+  const allQuestions = useMemo(
+    () =>
+      currentForm.pages.flatMap((page) =>
+        page.sections.flatMap((section) =>
+          section.questions.map((canvasQuestion) => ({
+            id: canvasQuestion.id,
+            label: canvasQuestion.label || canvasQuestion.type,
+            pageLabel: page.label,
+            sectionLabel: section.label,
+          })),
+        ),
+      ),
+    [currentForm.pages],
+  );
 
   const duplicateQuestion = () => {
     const section = useFormBuilderStore
@@ -324,8 +743,25 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
   };
 
   const updateQuestionLabel = (label: string) => {
-    console.log('label:', label)
     updateQuestion(pageId, sectionId, question.id, { label });
+  };
+
+  const logics = currentForm.conditionalLogic.filter(
+    (logic) => logic.sourceFieldId === question.id,
+  );
+  
+  const targetQuestions = allQuestions.filter(
+    (q) => q?.id !== question?.id,
+  );
+  const defaultTargetQuestion = targetQuestions?.[0];
+
+  const handleAddLogic = () => {
+    addConditionalRule({
+      id: uuidv4(),
+      sourceFieldId: question.id,
+      conditions: [{ fieldId: question.id, operator: "equals", value: "" }],
+      actions: [{ type: "show", targetFieldId: defaultTargetQuestion?.id }],
+    });
   };
 
   return (
@@ -359,7 +795,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
         </span>
       ) : null}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <button
           type="button"
           {...attributes}
@@ -374,20 +810,52 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
           <GripVertical size={20} />
         </button>
 
-        <div className={cn("min-w-0 flex-1 space-y-2", question.hidden && "pr-20")}>
+        <div
+          className={cn("min-w-0 flex-1 space-y-2", question.hidden && "pr-20")}
+        >
           <div className="flex items-center gap-2">
-            <div className={cn("inline-flex items-center gap-1.5", question.hidden && "opacity-60")}>
-            <input
-              className="w-auto min-w-0 bg-transparent text-base font-medium text-slate-900 outline-none"
-              value={`${question.label}${question.required ? "*" : ""}`}
-              onChange={(e) => updateQuestionLabel(e.target.value)}
-            />
+            <div
+              className={cn(
+                "inline-flex items-center gap-1.5",
+                question.hidden && "opacity-60",
+              )}
+            >
+              <input
+                className="w-auto min-w-0 bg-transparent text-base font-medium text-slate-900 outline-none"
+                value={`${question.label}${question.required ? "*" : ""}`}
+                onChange={(e) => updateQuestionLabel(e.target.value)}
+              />
             </div>
           </div>
 
           <div className={cn(question.hidden && "opacity-60")}>
-            <CanvasQuestionPreview pageId={pageId} sectionId={sectionId} question={question} />
+            <CanvasQuestionPreview
+              pageId={pageId}
+              sectionId={sectionId}
+              question={question}
+            />
           </div>
+
+          {isSelected ? (
+            logics.length > 0 ? (
+              logics.map((logic) => (
+                <InlineQuestionLogicScaffold
+                  key={logic.id}
+                  field={question}
+                  questions={allQuestions}
+                  logic={logic}
+                />
+              ))
+            ) : (
+              <button
+                type="button"
+                className="rounded-md px-1.5 py-1 text-xs text-slate-600 transition hover:bg-white hover:text-slate-800 cursor-pointer"
+                onClick={handleAddLogic}
+              >
+                + Add logic
+              </button>
+            )
+          ) : null}
         </div>
 
         <div
@@ -412,14 +880,14 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
             </button>
           </TooltipWrapper>
           <TooltipWrapper tooltip="Duplicate field" side="top">
-          <button
-            type="button"
-            title="Duplicate field"
-            className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-            onClick={duplicateQuestion}
-          >
-            <Copy size={16} />
-          </button>
+            <button
+              type="button"
+              title="Duplicate field"
+              className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+              onClick={duplicateQuestion}
+            >
+              <Copy size={16} />
+            </button>
           </TooltipWrapper>
           <AlertDialog>
             <TooltipWrapper tooltip="Delete field" side="top">
@@ -440,8 +908,8 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
                 </AlertDialogMedia>
                 <AlertDialogTitle>Delete this field?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently remove &quot;{question.label}&quot; from the
-                  section. This action cannot be undone.
+                  This will permanently remove &quot;{question.label}&quot; from
+                  the section. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
