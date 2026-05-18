@@ -1,37 +1,27 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Copy,
-  GitBranch,
   Trash2,
   GripVertical,
   EyeOff,
   Mail,
   Settings2,
   Star,
-  Zap,
-  Plus,
-  Trash,
+  EllipsisVertical,
 } from "lucide-react";
 import { useFormBuilderStore } from "../store/form-builder-store";
-import type {
-  Action,
-  ActionType,
-  Condition,
-  ConditionalRule,
-  FormQuestion,
-  LogicOperator,
-  Operator,
-} from "../../shared/types";
+import type { FormQuestion } from "../../shared/types";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/shared/components/ui/native-select";
-import TooltipWrapper from "@/shared/components/ui/tooltipwrapper";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,7 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/shared/components/ui/alert-dialog";
 import LiveSelectField from "./preview-fields/live-select-field.component";
 import { getWidthStyle } from "../utils";
@@ -50,406 +39,13 @@ import LiveRadioField from "./preview-fields/live-radio-field.component";
 import LiveCheckField from "./preview-fields/live-check-field.component";
 import LiveMultiSelect from "./preview-fields/live-multi-select.component";
 import { v4 as uuidv4 } from "uuid";
+import { InlineQuestionLogicScaffold } from "./inline-question-logic.component";
 interface CanvasFieldProps {
   question: FormQuestion;
   pageId: string;
   sectionId: string;
 }
 
-function InlineQuestionLogicScaffold({
-  field,
-  questions,
-  logic,
-}: {
-  field: FormQuestion;
-  questions: Array<{
-    id: string;
-    label: string;
-    pageLabel: string;
-    sectionLabel: string;
-  }>;
-  logic: ConditionalRule;
-}) {
-  console.log("logic:", logic);
-  const targetQuestions = questions.filter(
-    (question) => question.id !== field.id,
-  );
-  const defaultTargetQuestion = targetQuestions[0];
-  const {
-    addConditionalRule,
-    updateConditionalRule,
-    // currentForm,
-    deleteConditionalRule,
-  } = useFormBuilderStore();
-
-  const [conditions, setConditions] = useState<Condition[]>(
-    logic.conditions || [{ fieldId: field.id, operator: "equals", value: "" }],
-  );
-  const [actions, setActions] = useState<Action[]>(
-    logic.actions || [{ type: "show", targetFieldId: "" }],
-  );
-
-  const conditionsRef = useRef<Condition[]>(conditions);
-  const actionsRef = useRef<Action[]>(actions);
-
-  const persist = (newConditions: Condition[], newActions: Action[]) => {
-    updateConditionalRule(logic.id, {
-      ...logic,
-      conditions: newConditions,
-      actions: newActions,
-    });
-  };
-
-  const patchConditions = (cb: (conditions: Condition[]) => Condition[]) => {
-    setConditions((prev) => {
-      const next = cb(prev);
-      persist(next, actionsRef.current);
-      return next;
-    });
-  };
-
-  const patchActions = (cb: (actions: Action[]) => Action[]) => {
-    setActions((prev) => {
-      const next = cb(prev);
-      persist(conditionsRef.current, next);
-      return next;
-    });
-  };
-
-  // console.log("currentForm:", currentForm);
-  // console.log("actions:", actions);
-  // console.log("conditions:", conditions);
-
-  const handleAddCondition = () => {
-    addConditionalRule({
-      id: uuidv4(),
-      sourceFieldId: field.id,
-      conditions: [{ fieldId: logic.id, operator: "equals", value: "" }],
-      actions: [{ type: "show", targetFieldId: defaultTargetQuestion?.id }],
-    });
-  };
-
-  const handleDeleteLogic = () => {
-    deleteConditionalRule(logic.id);
-  };
-
-  // const updateCondition = () => {
-  //   updateConditionalRule(logic.id, {
-  //     ...logic,
-  //     conditions: conditions,
-  //     actions: actions,
-  //   });
-  // };
-
-  return (
-    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-      <div className="space-y-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-          {conditions.map((condition, index) => (
-            <div className="mt-3 gap-2 flex">
-              {index === 0 ? (
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                  <GitBranch size={16} className="text-slate-500" />
-                  <span>When</span>
-                </div>
-              ) : (
-                <NativeSelect
-                  className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
-                  defaultValue={condition.logic}
-                  value={condition.logic}
-                  aria-label="Condition source field"
-                  onChange={(e) =>
-                    patchConditions((prev) => {
-                      const newConditions = [...prev];
-                      newConditions[index] = {
-                        ...newConditions[index],
-                        logic: e.target.value as LogicOperator,
-                      };
-                      return newConditions;
-                    })
-                  }
-                >
-                  {["AND", "OR"].map((question) => (
-                    <NativeSelectOption key={question} value={question}>
-                      {question}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
-              )}
-
-              <NativeSelect
-                className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
-                defaultValue={condition.fieldId}
-                value={condition.fieldId}
-                aria-label="Condition source field"
-                onChange={(e) =>
-                  patchConditions((prev) => {
-                    const newConditions = [...prev];
-                    newConditions[index] = {
-                      ...newConditions[index],
-                      fieldId: e.target.value,
-                    };
-                    return newConditions;
-                  })
-                }
-              >
-                {questions.map((question) => (
-                  <NativeSelectOption key={question.id} value={question.id}>
-                    {question.label}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-
-              <NativeSelect
-                className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
-                defaultValue={"equals"}
-                value={condition.operator}
-                aria-label="Condition operator"
-                onChange={(e) =>
-                  patchConditions((prev) => {
-                    const newConditions = [...prev];
-                    newConditions[index] = {
-                      ...newConditions[index],
-                      operator: e.target.value as Operator,
-                    };
-                    console.log("newConditions:", newConditions);
-                    return newConditions;
-                  })
-                }
-              >
-                <NativeSelectOption value="equals">Is</NativeSelectOption>
-                <NativeSelectOption value="notEquals">
-                  Is not
-                </NativeSelectOption>
-                <NativeSelectOption value="contains">
-                  Contains
-                </NativeSelectOption>
-                <NativeSelectOption value="greaterThan">
-                  {">"}
-                </NativeSelectOption>
-                <NativeSelectOption value="lessThan">{"<"}</NativeSelectOption>
-                <NativeSelectOption value="isEmpty">
-                  Is empty
-                </NativeSelectOption>
-                <NativeSelectOption value="isNotEmpty">
-                  Is not empty
-                </NativeSelectOption>
-              </NativeSelect>
-
-              <Input
-                className="h-8 rounded-xl border-slate-200 bg-white text-sm shadow-sm"
-                defaultValue={
-                  condition.value == null ? "" : String(condition.value)
-                  // field.defaultValue == null ? "" : String(field.defaultValue)
-                }
-                onChange={(e) => {
-                  patchConditions((prev) => {
-                    const newConditions = [...prev];
-                    newConditions[index] = {
-                      ...newConditions[index],
-                      value: e.target.value,
-                    };
-                    return newConditions;
-                  });
-                }}
-                placeholder="Value"
-                aria-label="Condition value"
-              />
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="rounded-md p-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-600"
-                  onClick={() =>
-                    patchConditions((prev) => {
-                      const newConditions = [...prev];
-                      newConditions.push({
-                        fieldId: field.id,
-                        operator: "equals",
-                        value: "",
-                        logic: 'AND'
-                      });
-                      return newConditions;
-                    })
-                  }
-                >
-                  <Plus size={16} />
-                </button>
-                {conditions.length > 1 && (
-                  <button
-                    type="button"
-                    className="rounded-md p-1.5 text-red-600 transition hover:bg-slate-100 hover:text-slate-600"
-                    onClick={() =>
-                      patchConditions((prev) => {
-                        const newConditions = [...prev];
-                        newConditions.splice(index, 1);
-                        return newConditions;
-                      })
-                    }
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-          {actions.map((action, idx) => (
-            <div className="mt-3 gap-2 flex">
-              {idx === 0 ? (
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                <Zap size={16} className="text-amber-500" />
-                <span>Then</span>
-              </div>
-              ) : (
-                <span className="flex items-center gap-2 text-sm font-medium text-slate-700">AND</span>
-              )}
-              <NativeSelect
-                className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
-                defaultValue="show"
-                value={action.type}
-                aria-label="Action type"
-                onChange={(e) =>
-                  patchActions((prev) => {
-                    const newActions = [...prev];
-                    newActions[idx] = {
-                      ...newActions[idx],
-                      type: e.target.value as ActionType,
-                    };
-                    return newActions;
-                  })
-                }
-              >
-                <NativeSelectOption value="show">Show field</NativeSelectOption>
-                <NativeSelectOption value="hide">Hide field</NativeSelectOption>
-                <NativeSelectOption value="enable">
-                  Enable field
-                </NativeSelectOption>
-                <NativeSelectOption value="disable">
-                  Disable field
-                </NativeSelectOption>
-                <NativeSelectOption value="setValue">
-                  Set value
-                </NativeSelectOption>
-              </NativeSelect>
-
-              <NativeSelect
-                className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
-                defaultValue={defaultTargetQuestion?.id}
-                value={action.targetFieldId}
-                aria-label="Action target field"
-                onChange={(e) =>
-                  patchActions((prev) => {
-                    const newActions = [...prev];
-                    newActions[idx] = {
-                      ...newActions[idx],
-                      targetFieldId: e.target.value,
-                    };
-                    return newActions;
-                  })
-                }
-              >
-                {targetQuestions.length > 0 ? (
-                  targetQuestions.map((question) => (
-                    <NativeSelectOption key={question.id} value={question.id}>
-                      {question.label}
-                    </NativeSelectOption>
-                  ))
-                ) : (
-                  <NativeSelectOption value={field.id}>
-                    No other field available
-                  </NativeSelectOption>
-                )}
-              </NativeSelect>
-
-              {action.type === "setValue" && (
-                <Input
-                  className="h-8 rounded-xl border-slate-200 bg-white text-sm shadow-sm"
-                  defaultValue={
-                    action?.value == null ? "" : String(action.value)
-                    // field.defaultValue == null ? "" : String(field.defaultValue)
-                  }
-                  onChange={(e) => {
-                    patchActions((prev) => {
-                      const newActions = [...prev];
-                      newActions[idx] = {
-                        ...newActions[idx],
-                        value: e.target.value,
-                      };
-                      return newActions;
-                    });
-                  }}
-                  placeholder="Value"
-                  aria-label="Action value"
-                />
-              )}
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="rounded-md p-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-600"
-                  onClick={() =>
-                    patchActions((prev) => {
-                      const newActions = [...prev];
-                      newActions.push({
-                        type: "show",
-                        targetFieldId: defaultTargetQuestion?.id,
-                      });
-                      return newActions;
-                    })
-                  }
-                >
-                  <Plus size={16} />
-                </button>
-                {actions.length > 1 && (
-                  <button
-                    type="button"
-                    className="rounded-md p-1.5 text-red-600 transition hover:bg-slate-100 hover:text-slate-600"
-                    onClick={() =>
-                      patchActions((prev) => {
-                        const newActions = [...prev];
-                        newActions.splice(idx, 1);
-                        return newActions;
-                      })
-                    }
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          <button
-            type="button"
-            className="rounded-md px-1.5 py-1 font-medium text-slate-600 transition hover:bg-white"
-            onClick={handleAddCondition}
-          >
-            + Add new logic
-          </button>
-          <button
-            type="button"
-            className="rounded-md px-1.5 py-1 gap-x-2 font-medium text-red-600 transition hover:bg-white flex cursor-pointer"
-            onClick={handleDeleteLogic}
-          >
-            <Trash size={14} />
-            Delete logic
-          </button>
-        </div>
-        {/* 
-        <Button type="button" size="sm">
-          Done
-        </Button> */}
-      </div>
-    </div>
-  );
-}
 
 function CanvasQuestionPreview({
   pageId,
@@ -797,7 +393,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
     });
   };
 
-  console.log("conditional logic:", currentForm.conditionalLogic);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
     <div
@@ -848,19 +444,59 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
         <div
           className={cn("min-w-0 flex-1 space-y-2", question.hidden && "pr-20")}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
             <div
-              className={cn(
-                "inline-flex items-center gap-1.5",
-                question.hidden && "opacity-60",
-              )}
+              className={cn("min-w-0 flex-1", question.hidden && "opacity-60")}
             >
               <input
-                className="w-auto min-w-0 bg-transparent text-base font-medium text-slate-900 outline-none"
+                className="w-full min-w-0 bg-transparent text-base font-medium text-slate-900 outline-none"
                 value={`${question.label}${question.required ? "*" : ""}`}
                 onChange={(e) => updateQuestionLabel(e.target.value)}
               />
             </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-800 data-[state=open]:border-slate-300 data-[state=open]:bg-slate-50"
+                  aria-label="Field options"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <EllipsisVertical size={16} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-44"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DropdownMenuItem
+                  onSelect={() =>
+                    setSelection({
+                      type: "question",
+                      pageId,
+                      sectionId,
+                      questionId: question.id,
+                    })
+                  }
+                >
+                  <Settings2 size={14} />
+                  Field settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={duplicateQuestion}>
+                  <Copy size={14} />
+                  Duplicate field
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 size={14} />
+                  Delete field
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className={cn(question.hidden && "opacity-60")}>
@@ -892,74 +528,31 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
             )
           ) : null}
         </div>
-
-        <div
-          className="flex shrink-0 mt-6 gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <TooltipWrapper tooltip="Field settings" side="top">
-            <button
-              type="button"
-              title="Field settings"
-              className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-              onClick={() =>
-                setSelection({
-                  type: "question",
-                  pageId,
-                  sectionId,
-                  questionId: question.id,
-                })
-              }
-            >
-              <Settings2 size={16} />
-            </button>
-          </TooltipWrapper>
-          <TooltipWrapper tooltip="Duplicate field" side="top">
-            <button
-              type="button"
-              title="Duplicate field"
-              className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-              onClick={duplicateQuestion}
-            >
-              <Copy size={16} />
-            </button>
-          </TooltipWrapper>
-          <AlertDialog>
-            <TooltipWrapper tooltip="Delete field" side="top">
-              <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  title="Delete field"
-                  className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </AlertDialogTrigger>
-            </TooltipWrapper>
-            <AlertDialogContent size="sm">
-              <AlertDialogHeader>
-                <AlertDialogMedia className="bg-red-50 text-red-500">
-                  <Trash2 size={18} />
-                </AlertDialogMedia>
-                <AlertDialogTitle>Delete this field?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently remove &quot;{question.label}&quot; from
-                  the section. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  onClick={() => deleteQuestion(pageId, sectionId, question.id)}
-                >
-                  Delete field
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent size="sm" onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-red-50 text-red-500">
+              <Trash2 size={18} />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete this field?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove &quot;{question.label}&quot; from the
+              section. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => deleteQuestion(pageId, sectionId, question.id)}
+            >
+              Delete field
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

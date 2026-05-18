@@ -6,7 +6,39 @@ import type {
   UseFormWatch,
 } from "react-hook-form";
 import type { EngineQuestion } from "../utils/helpers";
-import type { Condition, FormSchema } from "@/shared/types";
+import type { Action, Condition, FormSchema } from "@/shared/types";
+
+function getTargetFieldIds(targetFieldId: string): string[] {
+  return targetFieldId.split(",").map((id) => id.trim()).filter(Boolean);
+}
+
+function applyTargetAction(
+  action: Action,
+  conditionsMet: boolean,
+  visible: Set<string>,
+  enabled: Set<string>,
+) {
+  getTargetFieldIds(action.targetFieldId).forEach((targetId) => {
+    switch (action.type) {
+      case "show":
+        if (conditionsMet) visible.add(targetId);
+        else visible.delete(targetId);
+        break;
+      case "hide":
+        if (conditionsMet) visible.delete(targetId);
+        else visible.add(targetId);
+        break;
+      case "enable":
+        if (conditionsMet) enabled.add(targetId);
+        else enabled.delete(targetId);
+        break;
+      case "disable":
+        if (conditionsMet) enabled.delete(targetId);
+        else enabled.add(targetId);
+        break;
+    }
+  });
+}
 
 function setsEqual(a: Set<string>, b: Set<string>): boolean {
   if (a.size !== b.size) return false;
@@ -64,24 +96,8 @@ function computeVisibility(
     // console.log('conditionsMet:', conditionsMet)
 
     rule.actions.forEach((action) => {
-      switch (action.type) {
-        case "show":
-          if (conditionsMet) visible.add(action.targetFieldId);
-          else visible.delete(action.targetFieldId);
-          break;
-        case "hide":
-          if (conditionsMet) visible.delete(action.targetFieldId);
-          else visible.add(action.targetFieldId);
-          break;
-        case "enable":
-          if (conditionsMet) enabled.add(action.targetFieldId);
-          else enabled.delete(action.targetFieldId);
-          break;
-        case "disable":
-          if (conditionsMet) enabled.delete(action.targetFieldId);
-          else enabled.add(action.targetFieldId);
-          break;
-      }
+      if (action.type === "setValue") return;
+      applyTargetAction(action, conditionsMet, visible, enabled);
     });
   });
   // console.log('visible:', visible)
