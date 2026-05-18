@@ -165,7 +165,7 @@ function InlineQuestionLogicScaffold({
                 value={condition.fieldId}
                 aria-label="Condition source field"
                 onChange={(e) =>
-                  setConditions((prev) => {
+                  patchConditions((prev) => {
                     const newConditions = [...prev];
                     newConditions[index] = {
                       ...newConditions[index],
@@ -188,12 +188,13 @@ function InlineQuestionLogicScaffold({
                 value={condition.operator}
                 aria-label="Condition operator"
                 onChange={(e) =>
-                  setConditions((prev) => {
+                  patchConditions((prev) => {
                     const newConditions = [...prev];
                     newConditions[index] = {
                       ...newConditions[index],
                       operator: e.target.value as Operator,
                     };
+                    console.log('newConditions:', newConditions)
                     return newConditions;
                   })
                 }
@@ -298,7 +299,7 @@ function InlineQuestionLogicScaffold({
                 value={action.type}
                 aria-label="Action type"
                 onChange={(e) =>
-                  setActions((prev) => {
+                  patchActions((prev) => {
                     const newActions = [...prev];
                     newActions[idx] = {
                       ...newActions[idx],
@@ -327,7 +328,7 @@ function InlineQuestionLogicScaffold({
                 value={action.targetFieldId}
                 aria-label="Action target field"
                 onChange={(e) =>
-                  setActions((prev) => {
+                  patchActions((prev) => {
                     const newActions = [...prev];
                     newActions[idx] = {
                       ...newActions[idx],

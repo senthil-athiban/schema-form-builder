@@ -20,6 +20,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
   onSubmit,
   initialData = {},
 }) => {
+  console.log('schema:', schema);
   const questions = useMemo(() => flattenQuestions(schema), [schema]);
   const defaultValues = useMemo(() => ({ ...initialData, ...buildDefaultValues(schema, initialData) }), [initialData, schema]);
 
@@ -40,8 +41,6 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
     return new Set(questions.filter((f) => !f.hidden).map((f) => f.id));
   }, [questions]);
 
-  console.log('questions:', questions);
-
   const initialZodSchema = useMemo(() => {
     return createZodSchema(questions, initialVisibleFields);
   }, [questions, initialVisibleFields]);
@@ -57,20 +56,19 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
     handleSubmit,
     formState: { errors, isSubmitting },
     watch,
+    getValues,
     setValue,
     control,
     clearErrors,
   } = formMethods;
 
-  // Watch all form values for conditional logic
-  const formData = watch();
-
-  // Handle conditional logic
   const { visibleFields, enabledFields } = useConditionalLogic({
     schema,
     questions,
-    formData,
+    watch,
+    getValues,
   });
+  console.log('visibleFields:', visibleFields);
 
   // Update Zod schema when visible fields change
   const currentZodSchema = useMemo(() => {
@@ -137,51 +135,58 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
     }
   }, [activePageId, errors, questions, sortedPages]);
 
-  console.log('watch', formData);
-
   useEffect(() => {
-    schema.conditionalLogic?.forEach((rule) => {
-      const conditionsMet = rule.conditions.every((condition) => {
-        const field = questions.find((f) => f.id === condition.fieldId);
-        if (!field) return false;
+    const applySetValueActions = (formData: Record<string, unknown>) => {
+      schema.conditionalLogic?.forEach((rule) => {
+        const conditionsMet = rule.conditions.every((condition) => {
+          const field = questions.find((f) => f.id === condition.fieldId);
+          if (!field) return false;
 
-        const fieldValue = formData[field.id];
+          const fieldValue = formData[field.id];
 
-        switch (condition.operator) {
-          case "equals":
-            return fieldValue === condition.value;
-          case "notEquals":
-            return fieldValue !== condition.value;
-          case "contains":
-            return String(fieldValue || "").includes(String(condition.value));
-          case "greaterThan":
-            return Number(fieldValue) > Number(condition.value);
-          case "lessThan":
-            return Number(fieldValue) < Number(condition.value);
-          case "isEmpty":
-            return !fieldValue || fieldValue === "";
-          case "isNotEmpty":
-            return !!fieldValue && fieldValue !== "";
-          default:
-            return false;
-        }
-      });
-      console.log('conditionsMet:', conditionsMet)
-
-      if (conditionsMet) {
-        rule.actions.forEach((action) => {
-          if (action.type === "setValue") {
-            const targetField = questions.find(
-              (f) => f.id === action.targetFieldId,
-            );
-            if (targetField) {
-              setValue(targetField.id, action.value);
-            }
+          switch (condition.operator) {
+            case "equals":
+              return fieldValue === condition.value;
+            case "notEquals":
+              return fieldValue !== condition.value;
+            case "contains":
+              return String(fieldValue || "").includes(String(condition.value));
+            case "greaterThan":
+              return Number(fieldValue) > Number(condition.value);
+            case "lessThan":
+              return Number(fieldValue) < Number(condition.value);
+            case "isEmpty":
+              return !fieldValue || fieldValue === "";
+            case "isNotEmpty":
+              return !!fieldValue && fieldValue !== "";
+            default:
+              return false;
           }
         });
-      }
+
+        if (conditionsMet) {
+          rule.actions.forEach((action) => {
+            if (action.type === "setValue") {
+              const targetField = questions.find(
+                (f) => f.id === action.targetFieldId,
+              );
+              if (targetField) {
+                setValue(targetField.id, action.value);
+              }
+            }
+          });
+        }
+      });
+    };
+
+    applySetValueActions(getValues() as Record<string, unknown>);
+
+    const subscription = watch((value) => {
+      applySetValueActions((value ?? {}) as Record<string, unknown>);
     });
-  }, [formData, questions, schema, setValue]);
+
+    return () => subscription.unsubscribe();
+  }, [watch, getValues, questions, schema, setValue]);
 
   // Clear errors for hidden fields
   useEffect(() => {
