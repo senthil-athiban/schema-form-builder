@@ -77,7 +77,7 @@ function InlineQuestionLogicScaffold({
   const {
     addConditionalRule,
     updateConditionalRule,
-    currentForm,
+    // currentForm,
     deleteConditionalRule,
   } = useFormBuilderStore();
 
@@ -97,22 +97,22 @@ function InlineQuestionLogicScaffold({
       conditions: newConditions,
       actions: newActions,
     });
-  }
+  };
 
   const patchConditions = (cb: (conditions: Condition[]) => Condition[]) => {
     setConditions((prev) => {
       const next = cb(prev);
       persist(next, actionsRef.current);
       return next;
-    })
-  }
+    });
+  };
 
   const patchActions = (cb: (actions: Action[]) => Action[]) => {
     setActions((prev) => {
       const next = cb(prev);
       persist(conditionsRef.current, next);
       return next;
-    })
+    });
   };
 
   // console.log("currentForm:", currentForm);
@@ -194,7 +194,7 @@ function InlineQuestionLogicScaffold({
                       ...newConditions[index],
                       operator: e.target.value as Operator,
                     };
-                    console.log('newConditions:', newConditions)
+                    console.log("newConditions:", newConditions);
                     return newConditions;
                   })
                 }
@@ -351,6 +351,28 @@ function InlineQuestionLogicScaffold({
                 )}
               </NativeSelect>
 
+              {action.type === "setValue" && (
+                <Input
+                  className="h-8 rounded-xl border-slate-200 bg-white text-sm shadow-sm"
+                  defaultValue={
+                    action?.value == null ? "" : String(action.value)
+                    // field.defaultValue == null ? "" : String(field.defaultValue)
+                  }
+                  onChange={(e) => {
+                    patchActions((prev) => {
+                      const newActions = [...prev];
+                      newActions[idx] = {
+                        ...newActions[idx],
+                        value: e.target.value,
+                      };
+                      return newActions;
+                    });
+                  }}
+                  placeholder="Value"
+                  aria-label="Action value"
+                />
+              )}
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -428,9 +450,8 @@ function CanvasQuestionPreview({
   // console.log('question:', question)
   const placeholder =
     typeof question.placeholder === "string" ? question.placeholder : "";
-  
+
   const previewWrap = "";
-  
 
   switch (question.type) {
     case "email":
@@ -750,10 +771,8 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
   const logics = currentForm.conditionalLogic.filter(
     (logic) => logic.sourceFieldId === question.id,
   );
-  
-  const targetQuestions = allQuestions.filter(
-    (q) => q?.id !== question?.id,
-  );
+
+  const targetQuestions = allQuestions.filter((q) => q?.id !== question?.id);
   const defaultTargetQuestion = targetQuestions?.[0];
 
   const handleAddLogic = () => {

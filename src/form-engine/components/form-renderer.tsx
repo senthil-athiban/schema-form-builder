@@ -67,6 +67,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
     questions,
     watch,
     getValues,
+    setValue
   });
   console.log('visibleFields:', visibleFields);
 
