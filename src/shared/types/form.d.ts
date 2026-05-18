@@ -124,7 +124,7 @@ export interface FieldValidation {
   }>;
 }
 
-type Logic = "AND" | "OR"; // for multiple conditions
+export type LogicOperator = "AND" | "OR"; // for multiple conditions
 type Operator =
   | "equals"
   | "notEquals"
@@ -139,7 +139,7 @@ export interface Condition {
   fieldId: string;
   operator: Operator;
   value: unknown;
-  logic?: Logic;
+  logic?: LogicOperator;
 }
 
 export interface Action {

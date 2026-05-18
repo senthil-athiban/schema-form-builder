@@ -6,7 +6,7 @@ import type {
   UseFormWatch,
 } from "react-hook-form";
 import type { EngineQuestion } from "../utils/helpers";
-import type { FormSchema } from "@/shared/types";
+import type { Condition, FormSchema } from "@/shared/types";
 
 function setsEqual(a: Set<string>, b: Set<string>): boolean {
   if (a.size !== b.size) return false;
@@ -28,30 +28,39 @@ function computeVisibility(
   const enabled = new Set(
     questions.filter((f) => !f.disabled).map((f) => f.id),
   );
+
+  const evaluateCondition = (
+    condition: Condition,
+    formData: Record<string, unknown>,
+  ) => {
+    const fieldValue = formData[condition.fieldId];
+
+    switch (condition.operator) {
+      case "equals":
+        return fieldValue === condition.value;
+      case "notEquals":
+        return fieldValue !== condition.value;
+      case "contains":
+        return String(fieldValue).includes(String(condition.value));
+      case "greaterThan":
+        return Number(fieldValue) > Number(condition.value);
+      case "lessThan":
+        return Number(fieldValue) < Number(condition.value);
+      case "isEmpty":
+        return !fieldValue || fieldValue === "";
+      case "isNotEmpty":
+        return !!fieldValue && fieldValue !== "";
+      default:
+        return false;
+    }
+  };
   // console.log('enabled:', enabled)
   schema.conditionalLogic?.forEach((rule) => {
-    const conditionsMet = rule.conditions.every((condition) => {
-      const fieldValue = formData[condition.fieldId];
-
-      switch (condition.operator) {
-        case "equals":
-          return fieldValue === condition.value;
-        case "notEquals":
-          return fieldValue !== condition.value;
-        case "contains":
-          return String(fieldValue).includes(String(condition.value));
-        case "greaterThan":
-          return Number(fieldValue) > Number(condition.value);
-        case "lessThan":
-          return Number(fieldValue) < Number(condition.value);
-        case "isEmpty":
-          return !fieldValue || fieldValue === "";
-        case "isNotEmpty":
-          return !!fieldValue && fieldValue !== "";
-        default:
-          return false;
-      }
-    });
+    const conditionsMet = rule.conditions.reduce((acc, condition, idx) => {
+      const result = evaluateCondition(condition, formData);
+      if (idx === 0) return result;
+      return condition.logic === "OR" ? acc || result : acc && result;
+    }, false);
     // console.log('conditionsMet:', conditionsMet)
 
     rule.actions.forEach((action) => {
@@ -136,9 +145,9 @@ export const useConditionalLogic = <T extends FieldValues>({
           const targetValue = action.value!;
           setValue(targetFieldId, targetValue, {
             shouldDirty: true,
-            shouldValidate: true
-          })
-        })
+            shouldValidate: true,
+          });
+        });
       });
     },
     [schema.conditionalLogic, setValue],

@@ -3,7 +3,6 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Copy,
-  EllipsisVertical,
   GitBranch,
   Trash2,
   GripVertical,
@@ -22,6 +21,7 @@ import type {
   Condition,
   ConditionalRule,
   FormQuestion,
+  LogicOperator,
   Operator,
 } from "../../shared/types";
 import { cn } from "@/shared/lib/utils";
@@ -70,6 +70,7 @@ function InlineQuestionLogicScaffold({
   }>;
   logic: ConditionalRule;
 }) {
+  console.log("logic:", logic);
   const targetQuestions = questions.filter(
     (question) => question.id !== field.id,
   );
@@ -123,8 +124,8 @@ function InlineQuestionLogicScaffold({
     addConditionalRule({
       id: uuidv4(),
       sourceFieldId: field.id,
-      conditions: [],
-      actions: [],
+      conditions: [{ fieldId: logic.id, operator: "equals", value: "" }],
+      actions: [{ type: "show", targetFieldId: defaultTargetQuestion?.id }],
     });
   };
 
@@ -144,21 +145,38 @@ function InlineQuestionLogicScaffold({
     <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
       <div className="space-y-3">
         <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <GitBranch size={16} className="text-slate-500" />
-              <span>When</span>
-            </div>
-            <button
-              type="button"
-              className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Condition row menu"
-            >
-              <EllipsisVertical size={16} />
-            </button>
-          </div>
           {conditions.map((condition, index) => (
             <div className="mt-3 gap-2 flex">
+              {index === 0 ? (
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <GitBranch size={16} className="text-slate-500" />
+                  <span>When</span>
+                </div>
+              ) : (
+                <NativeSelect
+                  className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
+                  defaultValue={condition.logic}
+                  value={condition.logic}
+                  aria-label="Condition source field"
+                  onChange={(e) =>
+                    patchConditions((prev) => {
+                      const newConditions = [...prev];
+                      newConditions[index] = {
+                        ...newConditions[index],
+                        logic: e.target.value as LogicOperator,
+                      };
+                      return newConditions;
+                    })
+                  }
+                >
+                  {["AND", "OR"].map((question) => (
+                    <NativeSelectOption key={question} value={question}>
+                      {question}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              )}
+
               <NativeSelect
                 className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
                 defaultValue={condition.fieldId}
@@ -249,6 +267,7 @@ function InlineQuestionLogicScaffold({
                         fieldId: field.id,
                         operator: "equals",
                         value: "",
+                        logic: 'AND'
                       });
                       return newConditions;
                     })
@@ -277,22 +296,16 @@ function InlineQuestionLogicScaffold({
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <Zap size={16} className="text-amber-500" />
-              <span>Then</span>
-            </div>
-            <button
-              type="button"
-              className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Action row menu"
-            >
-              <EllipsisVertical size={16} />
-            </button>
-          </div>
-
           {actions.map((action, idx) => (
             <div className="mt-3 gap-2 flex">
+              {idx === 0 ? (
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <Zap size={16} className="text-amber-500" />
+                <span>Then</span>
+              </div>
+              ) : (
+                <span className="flex items-center gap-2 text-sm font-medium text-slate-700">AND</span>
+              )}
               <NativeSelect
                 className="w-full rounded-xl border-slate-200 bg-white text-sm shadow-sm"
                 defaultValue="show"
@@ -783,6 +796,8 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
       actions: [{ type: "show", targetFieldId: defaultTargetQuestion?.id }],
     });
   };
+
+  console.log("conditional logic:", currentForm.conditionalLogic);
 
   return (
     <div
