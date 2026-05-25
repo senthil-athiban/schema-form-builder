@@ -26,6 +26,7 @@ import { PropertyPanel } from "./property-panel.component";
 import { FormSettings } from "./form-settings.component";
 import { FormRenderer } from "../../form-engine/components/form-renderer";
 import type { BuilderDragData } from "@/shared/types";
+import { ApiError, formsApi, getWorkspaceId } from "@/shared/api";
 
 export const FormBuilder: React.FC = () => {
   const {
@@ -259,10 +260,24 @@ export const FormBuilder: React.FC = () => {
     input.click();
   };
 
-  const handleSave = () => {
-    // This would typically save to a database
-    console.log("Saving form:", exportSchema());
-    alert("Form saved successfully!");
+  const handleSave = async () => {
+    try {
+      const schema = exportSchema();
+      const response = await formsApi.create({
+        workspaceId: getWorkspaceId(),
+        schema,
+      });
+      console.log('response:', response);
+      alert("Form saved successfully!");
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to save form";
+      alert(message);
+    }
   };
 
   const handleClear = () => {
