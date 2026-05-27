@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -30,9 +30,13 @@ import { PropertyPanel } from "./property-panel.component";
 import { FormSettings } from "./form-settings.component";
 import { FormRenderer } from "../../form-engine/components/form-renderer";
 import type { BuilderDragData, FormSchema } from "@/shared/types";
-import { ApiError, formsApi, getWorkspaceId } from "@/shared/api";
-import { FormsList } from "./forms-list.component";
-import { Link, useParams } from "react-router-dom";
+import { getWorkspaceId } from "@/shared/api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  useCreateFormMutation,
+  useUpdateFormMutation,
+} from "@/services/forms/mutations";
+import { useFormByIdQuery } from "@/services/forms/queries";
 
 export const FormBuilderEditor: React.FC = () => {
   const {
@@ -55,10 +59,15 @@ export const FormBuilderEditor: React.FC = () => {
   } = useFormBuilderStore();
 
   const { formId: routeFormId } = useParams<{ formId?: string }>();
+  const navigate = useNavigate();
+  const workspaceId = getWorkspaceId();
 
   const [loadFormIdInput, setLoadFormIdInput] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingForm, setIsLoadingForm] = useState(false);
+  const createFormMutation = useCreateFormMutation();
+  const updateFormMutation = useUpdateFormMutation();
+  const formByIdQuery = useFormByIdQuery(routeFormId, Boolean(routeFormId));
+  const isSaving = createFormMutation.isPending || updateFormMutation.isPending;
+  const isLoadingForm = formByIdQuery.isFetching;
 
   const selectedPageId =
     selection?.type === "page" ||
@@ -287,28 +296,6 @@ export const FormBuilderEditor: React.FC = () => {
     };
   };
 
-  const loadFormById = useCallback(
-    async (formId: string) => {
-      setIsLoadingForm(true);
-      try {
-        const { data } = await formsApi.getById(formId);
-        openEditorWithForm(data.form.id, data.schema);
-        setLoadFormIdInput(data.form.id);
-      } catch (error) {
-        const message =
-          error instanceof ApiError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : "Failed to load form";
-        alert(message);
-      } finally {
-        setIsLoadingForm(false);
-      }
-    },
-    [openEditorWithForm],
-  );
-
   useEffect(() => {
     if (!routeFormId) {
       startNewFormInEditor();
@@ -316,9 +303,20 @@ export const FormBuilderEditor: React.FC = () => {
       setLoadFormIdInput("");
       return;
     }
+    if (!formByIdQuery.data) return;
+    openEditorWithForm(formByIdQuery.data.form.id, formByIdQuery.data.schema);
+    setLoadFormIdInput(formByIdQuery.data.form.id);
+  }, [routeFormId, formByIdQuery.data, openEditorWithForm, startNewFormInEditor]);
 
-    void loadFormById(routeFormId);
-  }, [routeFormId, loadFormById, startNewFormInEditor]);
+  useEffect(() => {
+    if (!formByIdQuery.error) return;
+    const message =
+      formByIdQuery.error instanceof Error
+        ? formByIdQuery.error.message
+        : "Failed to load form";
+    alert(message);
+    void navigate("/forms");
+  }, [formByIdQuery.error, navigate]);
 
   const handleLoadForm = async () => {
     const formId = loadFormIdInput.trim();
@@ -326,7 +324,7 @@ export const FormBuilderEditor: React.FC = () => {
       alert("Enter a form ID to load");
       return;
     }
-    await loadFormById(formId);
+    await navigate(`/forms/${formId}`);
   };
 
   const handleNewForm = () => {
@@ -342,39 +340,30 @@ export const FormBuilderEditor: React.FC = () => {
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
     try {
       const schema = buildSchemaForSave();
-      const workspaceId = getWorkspaceId();
       const payload = { workspaceId, schema };
 
       if (persistedFormId) {
-        const { data } = await formsApi.update(persistedFormId, payload);
-        const versionMsg = data.versionCreated
-          ? ` (version ${data.formVersion.version})`
+        const result = await updateFormMutation.mutateAsync({
+          formId: persistedFormId,
+          payload,
+        });
+        const versionMsg = result.versionCreated
+          ? ` (version ${result.formVersion.version})`
           : "";
         alert(`Form updated successfully${versionMsg}`);
       } else {
-        const { data } = await formsApi.create(payload);
-        setPersistedFormId(data.form.id);
-        setLoadFormIdInput(data.form.id);
-
-        const url = new URL(window.location.href);
-        url.searchParams.set("formId", data.form.id);
-        window.history.replaceState({}, "", url);
-
+        const result = await createFormMutation.mutateAsync(payload);
+        setPersistedFormId(result.form.id);
+        setLoadFormIdInput(result.form.id);
+        await navigate(`/forms/${result.form.id}`);
         alert("Form created successfully!");
       }
     } catch (error) {
       const message =
-        error instanceof ApiError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Failed to save form";
+        error instanceof Error ? error.message : "Failed to save form";
       alert(message);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -388,9 +377,7 @@ export const FormBuilderEditor: React.FC = () => {
     }
     resetForm();
     setLoadFormIdInput("");
-    const url = new URL(window.location.href);
-    url.searchParams.delete("formId");
-    window.history.replaceState({}, "", url);
+    void navigate("/forms/new");
   };
 
   const iconButtonClass =
@@ -627,41 +614,4 @@ export const FormBuilderEditor: React.FC = () => {
       </div>
     </div>
   );
-};
-
-export const FormBuilder: React.FC = () => {
-  const activeView = useFormBuilderStore((state) => state.activeView);
-  const openEditorWithForm = useFormBuilderStore(
-    (state) => state.openEditorWithForm,
-  );
-  // const params = useParam
-
-  useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get("formId");
-    if (!fromUrl) return;
-
-    let cancelled = false;
-    void formsApi
-      .getById(fromUrl)
-      .then(({ data }) => {
-        if (cancelled) return;
-        openEditorWithForm(data.form.id, data.schema);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        const url = new URL(window.location.href);
-        url.searchParams.delete("formId");
-        window.history.replaceState({}, "", url);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [openEditorWithForm]);
-
-  if (activeView === "list") {
-    return <FormsList />;
-  }
-
-  return <FormBuilderEditor />;
 };

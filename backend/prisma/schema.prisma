@@ -155,6 +155,9 @@ model Form {
   name        String
   description String?
 
+  publicToken  String? @unique
+  publishedVersion   Int?
+
   status FormStatus
 
   latestVersion Int @default(1)

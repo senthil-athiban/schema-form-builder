@@ -1,6 +1,9 @@
 import { FormStatus, type Prisma } from "@prisma/client";
 import { prisma } from "../db/prisma.js";
 import { NotFoundError } from "../errors/app-error.js";
+import { randomBytes } from "node:crypto";
+
+const createPublicToken = () => randomBytes(16).toString("base64url");
 
 const verifyWorkspaceId = async (workspaceId: string) => {
     return await prisma.workspace.findUnique({ where: { id: workspaceId }});
@@ -133,6 +136,8 @@ const listForms = async (workspaceId: string) => {
             description: true,
             status: true,
             latestVersion: true,
+            publicToken: true,
+            publishedVersion: true,
             createdAt: true,
             updatedAt: true,
             _count: {
@@ -142,4 +147,74 @@ const listForms = async (workspaceId: string) => {
     });
 };
 
-export default { createForm, getFormById, updateForm, listForms };
+const publishForm = async (formId: string) => {
+    const form = await prisma.form.findFirst({
+        where: { id: formId, deletedAt: null }
+    });
+
+    if (!form) throw new NotFoundError("Form is not found");
+
+    const version = await prisma.formVersion.findUnique({
+        where: { formId_version: { formId, version: form.latestVersion }  }
+    })
+
+    if (!version) throw new NotFoundError("Form version not found");
+
+    const publicToken = form.publicToken ?? createPublicToken();
+    const publishedVersion = form.latestVersion
+
+    const updated = await prisma.form.update({
+        where: { id: formId, deletedAt: null },
+        data: {
+            status: FormStatus.PUBLISHED,
+            publicToken,
+            publishedVersion
+        }
+    });
+
+    return {
+        form: updated,
+        publicToken,
+        publishedVersion
+    }
+
+}
+
+const getPublicFormByToken = async (token: string) => {
+    const form = await prisma.form.findFirst({
+        where: {
+            publicToken: token,
+            deletedAt: null,
+            status: FormStatus.PUBLISHED,
+        },
+    });
+
+    if (!form || form.publishedVersion == null) {
+        throw new NotFoundError("Published form not found");
+    }
+
+    const formVersion = await prisma.formVersion.findUnique({
+        where: {
+            formId_version: { formId: form.id, version: form.publishedVersion },
+        },
+    });
+
+    if (!formVersion) throw new NotFoundError("Form version not found");
+
+    return {
+        formId: form.id,
+        name: form.name,
+        description: form.description,
+        publishedVersion: form.publishedVersion,
+        schema: formVersion.schema,
+    };
+};
+
+export default {
+    createForm,
+    getFormById,
+    updateForm,
+    listForms,
+    publishForm,
+    getPublicFormByToken,
+};

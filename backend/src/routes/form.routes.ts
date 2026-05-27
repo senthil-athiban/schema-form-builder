@@ -90,4 +90,15 @@ formRouter.get(
   }),
 );
 
+formRouter.put(
+  "/:formId/publish",
+  asyncHandler(async (req, res) => {
+    const formId = getFormIdParam(req.params.formId);
+    const response = await formService.publishForm(formId);
+    res.json({
+      data: response
+    });
+  }),
+);
+
 export default formRouter;

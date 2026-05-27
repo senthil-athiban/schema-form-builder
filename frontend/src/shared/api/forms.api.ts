@@ -5,6 +5,7 @@ import type {
   CreateFormResult,
   FormListItem,
   GetFormResult,
+  PublishFormResult,
 } from "./types";
 
 function unwrapData<T>(result: ApiResult<ApiResponse<T>>): ApiResult<T> {
@@ -33,6 +34,13 @@ export const formsApi = {
     const result = await put<ApiResponse<CreateFormResult>>(
       `/form/${formId}`,
       payload,
+    );
+    return unwrapData(result);
+  },
+
+  async publish(formId: string) {
+    const result = await put<ApiResponse<PublishFormResult>>(
+      `/form/${formId}/publish`,
     );
     return unwrapData(result);
   },

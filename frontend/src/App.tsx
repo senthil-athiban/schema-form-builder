@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { FormsList } from "./form-builder/components/forms-list.component";
 import { FormBuilderEditor } from "./form-builder/components/form-builder.component";
+import { PublicFormPage } from "./form-engine/components/public-form-page.component";
 
 export default function App() {
   return (
@@ -9,6 +10,7 @@ export default function App() {
       <Route path="/forms" element={<FormsList />} />
       <Route path="/forms/new" element={<FormBuilderEditor />} />
       <Route path="/forms/:formId" element={<FormBuilderEditor />} />
+      <Route path="/f/:token" element={<PublicFormPage />} />
       <Route path="*" element={<Navigate to="/forms" replace />} />
     </Routes>
   );

@@ -1,8 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
-import { FileText, Loader2, Plus, RefreshCw } from "lucide-react";
-import { ApiError, formsApi, getWorkspaceId } from "@/shared/api";
-import type { FormListItem, FormStatus } from "@/shared/api/types";
+import { useMemo } from "react";
+import {
+  ExternalLink,
+  FileText,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Send,
+} from "lucide-react";
 import { Link } from "react-router-dom";
+import { getPublicFormUrl, getWorkspaceId } from "@/shared/api";
+import type { FormListItem, FormStatus } from "@/shared/api/types";
+import { useFormsListQuery } from "@/services/forms/queries";
+import { usePublishFormMutation } from "@/services/forms/mutations";
 
 const statusStyles: Record<FormStatus, string> = {
   DRAFT: "bg-amber-50 text-amber-700 ring-amber-200",
@@ -18,33 +27,39 @@ function formatDate(value: string) {
 }
 
 export const FormsList: React.FC = () => {
-  const [forms, setForms] = useState<FormListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const workspaceId = useMemo(() => getWorkspaceId(), []);
+  const formsQuery = useFormsListQuery(workspaceId);
+  const publishMutation = usePublishFormMutation();
+  const forms: FormListItem[] = formsQuery.data ?? [];
+  const isLoading = formsQuery.isLoading;
+  const error = formsQuery.error instanceof Error
+    ? formsQuery.error.message
+    : formsQuery.error
+      ? "Failed to load forms"
+      : null;
+  const publishingId = publishMutation.isPending
+    ? publishMutation.variables ?? null
+    : null;
 
-  const fetchForms = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const { data } = await formsApi.list(getWorkspaceId());
-      setForms(data);
-    } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Failed to load forms";
-      setError(message);
-    } finally {
-      setIsLoading(false);
+  const handlePublish = async (formId: string, formName: string) => {
+    if (
+      !window.confirm(
+        `Publish "${formName}"? A public link will be created for customers.`,
+      )
+    ) {
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchForms();
-  }, [fetchForms]);
+    try {
+      const data = await publishMutation.mutateAsync(formId);
+      const publicUrl = getPublicFormUrl(data.publicToken);
+      window.prompt("Form published! Copy the public link:", publicUrl);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to publish form";
+      alert(message);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -53,13 +68,13 @@ export const FormsList: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Your forms</h1>
             <p className="mt-1 text-sm text-slate-500">
-              Select a form to edit or create a new one.
+              Select a form to edit, publish, or share with customers.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => void fetchForms()}
+              onClick={() => void formsQuery.refetch()}
               disabled={isLoading}
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
@@ -69,14 +84,14 @@ export const FormsList: React.FC = () => {
               />
               Refresh
             </button>
-            <Link to={'/forms/new'}>
-            <button
-              type="button"
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
-            >
-              <Plus size={16} />
-              Create form
-            </button>
+            <Link to="/forms/new">
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+              >
+                <Plus size={16} />
+                Create form
+              </button>
             </Link>
           </div>
         </div>
@@ -101,25 +116,32 @@ export const FormsList: React.FC = () => {
             <p className="mt-1 text-sm text-slate-500">
               Create your first form to get started.
             </p>
-            <Link to={'/forms/new'}>
-            <button
-              type="button"
-              className="mt-6 flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              <Plus size={16} />
-              Create form
-            </button>
+            <Link to="/forms/new">
+              <button
+                type="button"
+                className="mt-6 flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                <Plus size={16} />
+                Create form
+              </button>
             </Link>
           </div>
         ) : (
           <ul className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {forms.map((form) => {
+              const isPublishing = publishingId === form.id;
+              const publicUrl = form.publicToken
+                ? getPublicFormUrl(form.publicToken)
+                : null;
+
               return (
-                <li key={form.id}>
-                  <Link to={`/forms/${form.id}`}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-70"
+                <li
+                  key={form.id}
+                  className="flex items-center gap-2 px-2 py-1 sm:gap-4 sm:px-3"
+                >
+                  <Link
+                    to={`/forms/${form.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-4 rounded-lg px-2 py-3 transition hover:bg-slate-50"
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
                       <FileText size={18} />
@@ -135,7 +157,10 @@ export const FormsList: React.FC = () => {
                           {form.status}
                         </span>
                         <span className="text-xs text-slate-400">
-                          v{form.latestVersion}
+                          v
+                          {form.status === "PUBLISHED" && form.publishedVersion
+                            ? form.publishedVersion
+                            : form.latestVersion}
                         </span>
                       </div>
                       {form.description ? (
@@ -149,8 +174,35 @@ export const FormsList: React.FC = () => {
                         {form._count.submissions === 1 ? "" : "s"}
                       </p>
                     </div>
-                  </button>
                   </Link>
+
+                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => void handlePublish(form.id, form.name)}
+                      disabled={isPublishing || publishMutation.isPending}
+                      className="flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-60 sm:text-sm"
+                    >
+                      {isPublishing ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Send size={14} />
+                      )}
+                      {form.status === "PUBLISHED" ? "Re-publish" : "Publish"}
+                    </button>
+
+                    {publicUrl ? (
+                      <a
+                        href={publicUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 sm:text-sm"
+                      >
+                        <ExternalLink size={14} />
+                        View live
+                      </a>
+                    ) : null}
+                  </div>
                 </li>
               );
             })}

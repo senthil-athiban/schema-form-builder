@@ -53,11 +53,30 @@ export interface FormListItem {
   description: string | null;
   status: FormStatus;
   latestVersion: number;
+  publicToken: string | null;
+  publishedVersion: number | null;
   createdAt: string;
   updatedAt: string;
   _count: {
     submissions: number;
   };
+}
+
+export interface PublishFormResult {
+  form: FormRecord & {
+    publicToken: string | null;
+    publishedVersion: number | null;
+  };
+  publicToken: string;
+  publishedVersion: number;
+}
+
+export interface PublicFormResult {
+  formId: string;
+  name: string;
+  description: string | null;
+  publishedVersion: number;
+  schema: FormSchema;
 }
 
 export interface FormVersionRecord {
