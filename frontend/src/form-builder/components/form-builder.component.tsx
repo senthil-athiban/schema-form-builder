@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -18,6 +18,10 @@ import {
   Redo,
   Trash2,
   Save,
+  FolderOpen,
+  Plus,
+  Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import { useFormBuilderStore } from "../store/form-builder-store";
 import { FieldsPalette } from "./fields-palette.component";
@@ -25,10 +29,11 @@ import Canvas from "./canvas.component";
 import { PropertyPanel } from "./property-panel.component";
 import { FormSettings } from "./form-settings.component";
 import { FormRenderer } from "../../form-engine/components/form-renderer";
-import type { BuilderDragData } from "@/shared/types";
+import type { BuilderDragData, FormSchema } from "@/shared/types";
 import { ApiError, formsApi, getWorkspaceId } from "@/shared/api";
+import { FormsList } from "./forms-list.component";
 
-export const FormBuilder: React.FC = () => {
+const FormBuilderEditor: React.FC = () => {
   const {
     currentForm,
     addQuestion,
@@ -42,7 +47,16 @@ export const FormBuilder: React.FC = () => {
     resetForm,
     exportSchema,
     selection,
+    persistedFormId,
+    setPersistedFormId,
+    openEditorWithForm,
+    showFormList,
+    startNewFormInEditor,
   } = useFormBuilderStore();
+
+  const [loadFormIdInput, setLoadFormIdInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingForm, setIsLoadingForm] = useState(false);
 
   const selectedPageId =
     selection?.type === "page" ||
@@ -260,15 +274,88 @@ export const FormBuilder: React.FC = () => {
     input.click();
   };
 
+  const buildSchemaForSave = (): FormSchema => {
+    const schema = exportSchema();
+    return {
+      ...schema,
+      metadata: {
+        ...schema.metadata,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+  };
+
+  const loadFormById = useCallback(
+    async (formId: string) => {
+      setIsLoadingForm(true);
+      try {
+        const { data } = await formsApi.getById(formId);
+        openEditorWithForm(data.form.id, data.schema);
+        setLoadFormIdInput(data.form.id);
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("formId", data.form.id);
+        window.history.replaceState({}, "", url);
+      } catch (error) {
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : "Failed to load form";
+        alert(message);
+      } finally {
+        setIsLoadingForm(false);
+      }
+    },
+    [openEditorWithForm],
+  );
+
+  const handleLoadForm = async () => {
+    const formId = loadFormIdInput.trim();
+    if (!formId) {
+      alert("Enter a form ID to load");
+      return;
+    }
+    await loadFormById(formId);
+  };
+
+  const handleNewForm = () => {
+    if (
+      !window.confirm(
+        "Start a new form? Unsaved changes to the current draft will be lost.",
+      )
+    ) {
+      return;
+    }
+    startNewFormInEditor();
+    setLoadFormIdInput("");
+  };
+
   const handleSave = async () => {
+    setIsSaving(true);
     try {
-      const schema = exportSchema();
-      const response = await formsApi.create({
-        workspaceId: getWorkspaceId(),
-        schema,
-      });
-      console.log('response:', response);
-      alert("Form saved successfully!");
+      const schema = buildSchemaForSave();
+      const workspaceId = getWorkspaceId();
+      const payload = { workspaceId, schema };
+
+      if (persistedFormId) {
+        const { data } = await formsApi.update(persistedFormId, payload);
+        const versionMsg = data.versionCreated
+          ? ` (version ${data.formVersion.version})`
+          : "";
+        alert(`Form updated successfully${versionMsg}`);
+      } else {
+        const { data } = await formsApi.create(payload);
+        setPersistedFormId(data.form.id);
+        setLoadFormIdInput(data.form.id);
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("formId", data.form.id);
+        window.history.replaceState({}, "", url);
+
+        alert("Form created successfully!");
+      }
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -277,33 +364,93 @@ export const FormBuilder: React.FC = () => {
             ? error.message
             : "Failed to save form";
       alert(message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleClear = () => {
     if (
-      window.confirm(
+      !window.confirm(
         "Are you sure you want to clear the form? This cannot be undone.",
       )
     ) {
-      resetForm();
+      return;
     }
+    resetForm();
+    setLoadFormIdInput("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("formId");
+    window.history.replaceState({}, "", url);
   };
 
   const iconButtonClass =
     "flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300";
   const toolButtonClass =
-    "flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50";
+    "flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <div className="flex h-screen flex-col bg-slate-50">
       {/* Top Bar */}
       <div className="flex min-h-[64px] items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={showFormList}
+            title="All forms"
+            className={toolButtonClass}
+          >
+            <ArrowLeft size={16} />
+            All forms
+          </button>
           <h1 className="text-xl font-bold text-slate-900">📋 Form Builder</h1>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
             {totalQuestions} questions
           </span>
+          {persistedFormId ? (
+            <span
+              className="max-w-[200px] truncate rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700"
+              title={persistedFormId}
+            >
+              ID: {persistedFormId}
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-700">
+              Unsaved new form
+            </span>
+          )}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={loadFormIdInput}
+              onChange={(e) => setLoadFormIdInput(e.target.value)}
+              placeholder="Form ID to load"
+              className="w-48 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            />
+            <button
+              type="button"
+              onClick={() => void handleLoadForm()}
+              disabled={isLoadingForm}
+              title="Load form"
+              className={toolButtonClass}
+            >
+              {isLoadingForm ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <FolderOpen size={16} />
+              )}
+              Load
+            </button>
+            <button
+              type="button"
+              onClick={handleNewForm}
+              title="New form"
+              className={toolButtonClass}
+            >
+              <Plus size={16} />
+              New
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -395,11 +542,16 @@ export const FormBuilder: React.FC = () => {
           <div className="h-8 w-px bg-slate-200" />
 
           <button
-            onClick={handleSave}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+            onClick={() => void handleSave()}
+            disabled={isSaving}
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Save size={16} />
-            Save Form
+            {isSaving ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
+            {persistedFormId ? "Update Form" : "Save Form"}
           </button>
         </div>
       </div>
@@ -465,4 +617,41 @@ export const FormBuilder: React.FC = () => {
       </div>
     </div>
   );
+};
+
+export const FormBuilder: React.FC = () => {
+  const activeView = useFormBuilderStore((state) => state.activeView);
+  const openEditorWithForm = useFormBuilderStore(
+    (state) => state.openEditorWithForm,
+  );
+  // const params = useParam
+
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("formId");
+    if (!fromUrl) return;
+
+    let cancelled = false;
+    void formsApi
+      .getById(fromUrl)
+      .then(({ data }) => {
+        if (cancelled) return;
+        openEditorWithForm(data.form.id, data.schema);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const url = new URL(window.location.href);
+        url.searchParams.delete("formId");
+        window.history.replaceState({}, "", url);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [openEditorWithForm]);
+
+  if (activeView === "list") {
+    return <FormsList />;
+  }
+
+  return <FormBuilderEditor />;
 };

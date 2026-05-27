@@ -34,15 +34,30 @@ export interface CreateFormPayload {
   schema: FormSchema;
 }
 
+export type FormStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
 export interface FormRecord {
   id: string;
   workspaceId: string;
   name: string;
   description: string | null;
-  status: string;
+  status: FormStatus;
   latestVersion: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FormListItem {
+  id: string;
+  name: string;
+  description: string | null;
+  status: FormStatus;
+  latestVersion: number;
+  createdAt: string;
+  updatedAt: string;
+  _count: {
+    submissions: number;
+  };
 }
 
 export interface FormVersionRecord {
@@ -57,6 +72,13 @@ export interface FormVersionRecord {
 export interface CreateFormResult {
   form: FormRecord;
   formVersion: FormVersionRecord;
+  versionCreated?: boolean;
+}
+
+export interface GetFormResult {
+  form: FormRecord;
+  formVersion: FormVersionRecord;
+  schema: FormSchema;
 }
 
 export interface CreateSubmissionPayload {

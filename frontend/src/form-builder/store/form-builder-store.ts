@@ -15,8 +15,14 @@ type SelectedNode =
     | { type: "question", pageId: string, sectionId: string, questionId: string }
     | null;
 
+const PERSISTED_FORM_ID_KEY = "form-builder:persisted-form-id";
+
+export type BuilderView = "list" | "editor";
+
 interface FormBuilderState {
+  activeView: BuilderView;
   currentForm: FormSchema;
+  persistedFormId: string | null;
   selection: SelectedNode | null;
   history: {
     past: FormSchema[];
@@ -30,6 +36,11 @@ interface FormBuilderState {
 interface FormBuilderActions {
   // Form operations
   setForm: (form: FormSchema) => void;
+  setPersistedFormId: (formId: string | null) => void;
+  setActiveView: (view: BuilderView) => void;
+  openEditorWithForm: (formId: string, schema: FormSchema) => void;
+  showFormList: () => void;
+  startNewFormInEditor: () => void;
   updateFormMetadata: (metadata: Partial<FormSchema["metadata"]>) => void;
   updateFormSettings: (settings: Partial<FormSchema["settings"]>) => void;
 
@@ -164,7 +175,12 @@ type FormBuilderStore = FormBuilderState & FormBuilderActions
 export const useFormBuilderStore = create<FormBuilderStore>()(
   devtools<FormBuilderStore>(
     (set, get) => ({
+      activeView: "list",
       currentForm: createEmptyForm(),
+      persistedFormId:
+        typeof localStorage !== "undefined"
+          ? localStorage.getItem(PERSISTED_FORM_ID_KEY)
+          : null,
       selection: null,
       history: {
         past: [],
@@ -678,6 +694,62 @@ export const useFormBuilderStore = create<FormBuilderStore>()(
           history: { past: [], present: form, future: [] },
         }),
 
+      setPersistedFormId: (formId) => {
+        if (typeof localStorage !== "undefined") {
+          if (formId) {
+            localStorage.setItem(PERSISTED_FORM_ID_KEY, formId);
+          } else {
+            localStorage.removeItem(PERSISTED_FORM_ID_KEY);
+          }
+        }
+        set({ persistedFormId: formId });
+      },
+
+      setActiveView: (view) => set({ activeView: view }),
+
+      openEditorWithForm: (formId, schema) => {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(PERSISTED_FORM_ID_KEY, formId);
+        }
+        set({
+          activeView: "editor",
+          currentForm: schema,
+          persistedFormId: formId,
+          mode: "edit",
+          selection: null,
+          history: { past: [], present: schema, future: [] },
+        });
+      },
+
+      showFormList: () => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("formId");
+        window.history.replaceState({}, "", url);
+        set({ activeView: "list" });
+      },
+
+      startNewFormInEditor: () => {
+        const emptyForm = createEmptyForm();
+        if (typeof localStorage !== "undefined") {
+          localStorage.removeItem(PERSISTED_FORM_ID_KEY);
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.delete("formId");
+        window.history.replaceState({}, "", url);
+        set({
+          activeView: "editor",
+          currentForm: emptyForm,
+          persistedFormId: null,
+          mode: "edit",
+          selection: null,
+          history: {
+            past: [],
+            present: emptyForm,
+            future: [],
+          },
+        });
+      },
+
       updateFormMetadata: (metadata) =>
         set((state) => {
           const updatedForm = {
@@ -831,8 +903,13 @@ export const useFormBuilderStore = create<FormBuilderStore>()(
       // Reset
       resetForm: () => {
         const emptyForm = createEmptyForm();
+        if (typeof localStorage !== "undefined") {
+          localStorage.removeItem(PERSISTED_FORM_ID_KEY);
+        }
         set({
+          activeView: "list",
           currentForm: emptyForm,
+          persistedFormId: null,
           selection: null,
           history: {
             past: [],
