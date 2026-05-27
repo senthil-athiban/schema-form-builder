@@ -4,6 +4,7 @@ import type {
   ApiResponse,
   CreateSubmissionPayload,
   SubmissionDetail,
+  SubmissionListItem,
   SubmissionRecord,
 } from "./types";
 
@@ -16,7 +17,7 @@ export const submissionsApi = {
   },
 
   list(formId: string, params?: { limit?: number; offset?: number }) {
-    return get<ApiListResponse<SubmissionDetail>>(
+    return get<ApiListResponse<SubmissionListItem>>(
       `/forms/${formId}/submissions`,
       { params },
     );

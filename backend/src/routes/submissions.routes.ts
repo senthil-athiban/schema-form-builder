@@ -9,7 +9,7 @@ import {
 
 export const submissionsRouter = Router({ mergeParams: true });
 
-function parseResponseData(body: unknown): Record<string, unknown> {
+export function parseResponseData(body: unknown): Record<string, unknown> {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new BadRequestError("Request body must be a JSON object");
   }
@@ -27,7 +27,7 @@ function parseResponseData(body: unknown): Record<string, unknown> {
   return responseData as Record<string, unknown>;
 }
 
-function parseMetadata(body: unknown): Record<string, unknown> | undefined {
+export function parseMetadata(body: unknown): Record<string, unknown> | undefined {
   if (!body || typeof body !== "object" || Array.isArray(body)) return undefined;
 
   const { metadata } = body as { metadata?: unknown };
@@ -40,7 +40,7 @@ function parseMetadata(body: unknown): Record<string, unknown> | undefined {
   return metadata as Record<string, unknown>;
 }
 
-function parseVersion(body: unknown): number | undefined {
+export function parseVersion(body: unknown): number | undefined {
   if (!body || typeof body !== "object" || Array.isArray(body)) return undefined;
 
   const { version } = body as { version?: unknown };

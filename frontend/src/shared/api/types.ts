@@ -113,6 +113,15 @@ export interface SubmissionRecord {
   submittedAt: string;
 }
 
+/** Row shape returned by `GET /forms/:formId/submissions` (list). */
+export interface SubmissionListItem {
+  id: string;
+  formVersionId: string;
+  responseData: Record<string, unknown>;
+  metadata: Record<string, unknown> | null;
+  submittedAt: string;
+}
+
 export interface SubmissionDetail extends SubmissionRecord {
   responseData: Record<string, unknown>;
   metadata: Record<string, unknown> | null;

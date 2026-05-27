@@ -52,6 +52,39 @@ async function getFormVersion(formId: string, version: number) {
   return formVersion;
 }
 
+const createSubmissionByPublicToken = async (token: string, input: CreateSubmissionInput) => {
+  const form = await prisma.form.findUnique({
+    where: { publicToken: token, status: FormStatus.PUBLISHED, deletedAt: null }
+  });
+
+  if (!form) throw new NotFoundError("Form not found");
+
+  const publishedVersion = form.publishedVersion;
+  if (!publishedVersion) throw new BadRequestError("Form not published");
+
+  const formVersion = await getFormVersion(form.id, publishedVersion);
+  const schema = parseFormSchema(formVersion.schema);
+  validateSubmissionResponse(schema, input.responseData);
+
+  const submission = await prisma.submission.create({
+    data: {
+      workspaceId: form.workspaceId,
+      formId: form.id,
+      formVersionId: formVersion.id,
+      responseData: input.responseData as Prisma.InputJsonValue,
+      ...(input.metadata !== undefined && { metadata: input.metadata }),
+    },
+    select: {
+      id: true,
+      formId: true,
+      formVersionId: true,
+      submittedAt: true,
+    }
+  });
+
+  return submission;
+}
+
 export async function createSubmission(
   formId: string,
   input: CreateSubmissionInput,
@@ -138,3 +171,5 @@ export async function listSubmissions(
 
   return { submissions, total, limit, offset };
 }
+
+export default { createSubmissionByPublicToken }
