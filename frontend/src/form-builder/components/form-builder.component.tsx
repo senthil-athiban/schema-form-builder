@@ -32,8 +32,9 @@ import { FormRenderer } from "../../form-engine/components/form-renderer";
 import type { BuilderDragData, FormSchema } from "@/shared/types";
 import { ApiError, formsApi, getWorkspaceId } from "@/shared/api";
 import { FormsList } from "./forms-list.component";
+import { Link, useParams } from "react-router-dom";
 
-const FormBuilderEditor: React.FC = () => {
+export const FormBuilderEditor: React.FC = () => {
   const {
     currentForm,
     addQuestion,
@@ -50,9 +51,10 @@ const FormBuilderEditor: React.FC = () => {
     persistedFormId,
     setPersistedFormId,
     openEditorWithForm,
-    showFormList,
     startNewFormInEditor,
   } = useFormBuilderStore();
+
+  const { formId: routeFormId } = useParams<{ formId?: string }>();
 
   const [loadFormIdInput, setLoadFormIdInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -78,15 +80,15 @@ const FormBuilderEditor: React.FC = () => {
     activePage?.sections.find((s) => s.id === selectedSectionId) ??
     activePage?.sections[0];
 
-  const totalQuestions = currentForm.pages.reduce(
-    (pageAcc, page) =>
-      pageAcc +
-      page.sections.reduce(
-        (sectionAcc, section) => sectionAcc + section.questions.length,
-        0,
-      ),
-    0,
-  );
+  // const totalQuestions = currentForm.pages.reduce(
+  //   (pageAcc, page) =>
+  //     pageAcc +
+  //     page.sections.reduce(
+  //       (sectionAcc, section) => sectionAcc + section.questions.length,
+  //       0,
+  //     ),
+  //   0,
+  // );
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -292,10 +294,6 @@ const FormBuilderEditor: React.FC = () => {
         const { data } = await formsApi.getById(formId);
         openEditorWithForm(data.form.id, data.schema);
         setLoadFormIdInput(data.form.id);
-
-        const url = new URL(window.location.href);
-        url.searchParams.set("formId", data.form.id);
-        window.history.replaceState({}, "", url);
       } catch (error) {
         const message =
           error instanceof ApiError
@@ -310,6 +308,17 @@ const FormBuilderEditor: React.FC = () => {
     },
     [openEditorWithForm],
   );
+
+  useEffect(() => {
+    if (!routeFormId) {
+      startNewFormInEditor();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoadFormIdInput("");
+      return;
+    }
+
+    void loadFormById(routeFormId);
+  }, [routeFormId, loadFormById, startNewFormInEditor]);
 
   const handleLoadForm = async () => {
     const formId = loadFormIdInput.trim();
@@ -390,23 +399,24 @@ const FormBuilderEditor: React.FC = () => {
     "flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <div className="flex h-screen flex-col bg-slate-50">
+    <div className="flex h-screen flex-col bg-slate-50 my-2">
       {/* Top Bar */}
-      <div className="flex min-h-[64px] items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm">
+      <div className="flex min-h-[64px] items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm py-2">
         <div className="flex flex-wrap items-center gap-3">
+          <Link to="/forms">
           <button
             type="button"
-            onClick={showFormList}
             title="All forms"
             className={toolButtonClass}
           >
             <ArrowLeft size={16} />
             All forms
           </button>
-          <h1 className="text-xl font-bold text-slate-900">📋 Form Builder</h1>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+          </Link>
+          {/* <h1 className="text-xl font-bold text-slate-900">📋 Form Builder</h1> */}
+          {/* <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
             {totalQuestions} questions
-          </span>
+          </span> */}
           {persistedFormId ? (
             <span
               className="max-w-[200px] truncate rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700"

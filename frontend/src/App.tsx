@@ -1,10 +1,15 @@
-import { FormBuilder } from './form-builder/components/form-builder.component'
+import { Navigate, Route, Routes } from "react-router-dom";
+import { FormsList } from "./form-builder/components/forms-list.component";
+import { FormBuilderEditor } from "./form-builder/components/form-builder.component";
 
-function App() {
-
+export default function App() {
   return (
-    <FormBuilder />
-  )
+    <Routes>
+      <Route path="/" element={<FormsList />} />
+      <Route path="/forms" element={<FormsList />} />
+      <Route path="/forms/new" element={<FormBuilderEditor />} />
+      <Route path="/forms/:formId" element={<FormBuilderEditor />} />
+      <Route path="*" element={<Navigate to="/forms" replace />} />
+    </Routes>
+  );
 }
-
-export default App

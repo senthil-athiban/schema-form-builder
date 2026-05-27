@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FileText, Loader2, Plus, RefreshCw } from "lucide-react";
 import { ApiError, formsApi, getWorkspaceId } from "@/shared/api";
 import type { FormListItem, FormStatus } from "@/shared/api/types";
-import { useFormBuilderStore } from "../store/form-builder-store";
+import { Link } from "react-router-dom";
 
 const statusStyles: Record<FormStatus, string> = {
   DRAFT: "bg-amber-50 text-amber-700 ring-amber-200",
@@ -18,10 +18,8 @@ function formatDate(value: string) {
 }
 
 export const FormsList: React.FC = () => {
-  const { openEditorWithForm, startNewFormInEditor } = useFormBuilderStore();
   const [forms, setForms] = useState<FormListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [openingId, setOpeningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchForms = useCallback(async () => {
@@ -44,30 +42,9 @@ export const FormsList: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchForms();
   }, [fetchForms]);
-
-  const handleOpenForm = async (formId: string) => {
-    setOpeningId(formId);
-    try {
-      const { data } = await formsApi.getById(formId);
-      openEditorWithForm(data.form.id, data.schema);
-
-      const url = new URL(window.location.href);
-      url.searchParams.set("formId", data.form.id);
-      window.history.replaceState({}, "", url);
-    } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Failed to open form";
-      alert(message);
-    } finally {
-      setOpeningId(null);
-    }
-  };
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -92,14 +69,15 @@ export const FormsList: React.FC = () => {
               />
               Refresh
             </button>
+            <Link to={'/forms/new'}>
             <button
               type="button"
-              onClick={startNewFormInEditor}
               className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
             >
               <Plus size={16} />
               Create form
             </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -123,33 +101,28 @@ export const FormsList: React.FC = () => {
             <p className="mt-1 text-sm text-slate-500">
               Create your first form to get started.
             </p>
+            <Link to={'/forms/new'}>
             <button
               type="button"
-              onClick={startNewFormInEditor}
               className="mt-6 flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
             >
               <Plus size={16} />
               Create form
             </button>
+            </Link>
           </div>
         ) : (
           <ul className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {forms.map((form) => {
-              const isOpening = openingId === form.id;
               return (
                 <li key={form.id}>
+                  <Link to={`/forms/${form.id}`}>
                   <button
                     type="button"
-                    onClick={() => void handleOpenForm(form.id)}
-                    disabled={isOpening}
                     className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-70"
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                      {isOpening ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <FileText size={18} />
-                      )}
+                      <FileText size={18} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -177,6 +150,7 @@ export const FormsList: React.FC = () => {
                       </p>
                     </div>
                   </button>
+                  </Link>
                 </li>
               );
             })}
