@@ -1,5 +1,16 @@
-import { FormStatus, WorkspaceRole } from "./generated/client/index.js";
+import {
+  FormStatus,
+  IntegrationProvider,
+  WorkspaceRole,
+  WorkflowNodeCategory,
+  WorkflowTriggerType,
+} from "./generated/client/index.js";
 import { prisma } from "./client.js";
+
+const SEED_WORKFLOW_ID = "seed-form-submitted-workflow";
+const SEED_TRIGGER_NODE_ID = "seed-wf-trigger";
+const SEED_WEBHOOK_NODE_ID = "seed-wf-webhook";
+const SEED_EDGE_ID = "seed-wf-edge-trigger-webhook";
 
 const sampleFormSchema = {
   id: "contact-form",
@@ -127,13 +138,94 @@ async function main() {
     },
   });
 
+  const webhookUrl =
+    process.env.SEED_WEBHOOK_URL ??
+    "https://webhook.site/00000000-0000-0000-0000-000000000000";
+
+  const workflow = await prisma.workflow.upsert({
+    where: { id: SEED_WORKFLOW_ID },
+    update: {
+      isActive: true,
+      triggerConfig: { formId: form.id },
+    },
+    create: {
+      id: SEED_WORKFLOW_ID,
+      workspaceId: workspace.id,
+      name: "Contact form → webhook",
+      isActive: true,
+      triggerType: WorkflowTriggerType.FORM_SUBMITTED,
+      triggerConfig: { formId: form.id },
+    },
+  });
+
+  await prisma.workflowNode.upsert({
+    where: { id: SEED_TRIGGER_NODE_ID },
+    update: {
+      name: "Form submitted",
+      category: WorkflowNodeCategory.TRIGGER,
+      config: {},
+    },
+    create: {
+      id: SEED_TRIGGER_NODE_ID,
+      workflowId: workflow.id,
+      name: "Form submitted",
+      category: WorkflowNodeCategory.TRIGGER,
+      positionX: 0,
+      positionY: 0,
+      config: {},
+    },
+  });
+
+  await prisma.workflowNode.upsert({
+    where: { id: SEED_WEBHOOK_NODE_ID },
+    update: {
+      name: "Send webhook",
+      category: WorkflowNodeCategory.ACTION,
+      provider: IntegrationProvider.WEBHOOK,
+      config: { url: webhookUrl, method: "POST" },
+    },
+    create: {
+      id: SEED_WEBHOOK_NODE_ID,
+      workflowId: workflow.id,
+      name: "Send webhook",
+      category: WorkflowNodeCategory.ACTION,
+      provider: IntegrationProvider.WEBHOOK,
+      action: "send",
+      positionX: 280,
+      positionY: 0,
+      config: { url: webhookUrl, method: "POST" },
+    },
+  });
+
+  await prisma.workflowEdge.upsert({
+    where: { id: SEED_EDGE_ID },
+    update: {
+      sourceNodeId: SEED_TRIGGER_NODE_ID,
+      targetNodeId: SEED_WEBHOOK_NODE_ID,
+    },
+    create: {
+      id: SEED_EDGE_ID,
+      workflowId: workflow.id,
+      sourceNodeId: SEED_TRIGGER_NODE_ID,
+      targetNodeId: SEED_WEBHOOK_NODE_ID,
+    },
+  });
+
   console.log("✅ Seed data created successfully");
   console.log({
     workspaceId: workspace.id,
     userId: user.id,
     formId: form.id,
+    workflowId: workflow.id,
+    webhookUrl,
     submitUrl: `POST /api/v1/forms/${form.id}/submissions`,
   });
+
+  if (!process.env.SEED_WEBHOOK_URL) {
+    console.warn(
+      "⚠️  Set SEED_WEBHOOK_URL in packages/db/.env to your webhook.site URL for live webhook tests.",
+    );
+  }
 }
 
 main()

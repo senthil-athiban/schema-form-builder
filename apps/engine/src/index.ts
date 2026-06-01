@@ -1,30 +1,31 @@
-import { config } from "dotenv";
-config();
+import "dotenv/config";
 import { Worker } from "bullmq";
 import {
   connection,
   FormSubmittedJobName,
   WORKFLOW_QUEUE_NAME,
+  type FormSubmittedJobData,
 } from "@form-builder/shared";
+import { handleFormSubmitted } from "./handlers/form-submitted.handler.js";
 
 const worker = new Worker(
   WORKFLOW_QUEUE_NAME,
   async (job) => {
     if (job.name === FormSubmittedJobName) {
-      console.log("[workflow-worker] form.submitted", job.data);
+      await handleFormSubmitted(job.data as FormSubmittedJobData);
       return;
     }
-    console.warn("[workflow-worker] unknown job name:", job.name);
+    console.warn("[engine] unknown job name:", job.name);
   },
-  {
-    connection: connection,
-  },
+  { connection },
 );
 
 worker.on("completed", (job) => {
-  console.log(`[workflow-worker] completed job ${job.id}`);
+  console.log(`[engine] completed job ${job.id}`);
 });
+
 worker.on("failed", (job, err) => {
-  console.error(`[workflow-worker] failed job ${job?.id}`, err);
+  console.error(`[engine] failed job ${job?.id}`, err);
 });
-console.log(`[workflow-worker] listening on queue "${WORKFLOW_QUEUE_NAME}"`);
+
+console.log(`[engine] listening on queue "${WORKFLOW_QUEUE_NAME}"`);

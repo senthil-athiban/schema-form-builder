@@ -52,6 +52,28 @@ async function getFormVersion(formId: string, version: number) {
   return formVersion;
 }
 
+const submissionCreatedSelect = {
+  id: true,
+  formId: true,
+  formVersionId: true,
+  workspaceId: true,
+  submittedAt: true,
+} as const;
+
+async function notifyFormSubmitted(submission: {
+  id: string;
+  formId: string;
+  formVersionId: string;
+  workspaceId: string;
+}) {
+  await enqueueFormSubmitted({
+    submissionId: submission.id,
+    formId: submission.formId,
+    workspaceId: submission.workspaceId,
+    formVersionId: submission.formVersionId,
+  });
+}
+
 export const createSubmissionByPublicToken = async (
   token: string,
   input: CreateSubmissionInput,
@@ -77,22 +99,10 @@ export const createSubmissionByPublicToken = async (
       responseData: input.responseData as Prisma.InputJsonValue,
       ...(input.metadata !== undefined && { metadata: input.metadata }),
     },
-    select: {
-      id: true,
-      formId: true,
-      formVersionId: true,
-      submittedAt: true,
-      workspaceId: true
-    }
+    select: submissionCreatedSelect,
   });
 
-  await enqueueFormSubmitted({
-    formId: submission.formId,
-    formVersionId: submission.formVersionId,
-    submissionId: submission.id,
-    workspaceId: submission.workspaceId
-  })
-
+  await notifyFormSubmitted(submission);
   return submission;
 }
 
@@ -115,14 +125,10 @@ export async function createSubmission(
       responseData: input.responseData as Prisma.InputJsonValue,
       ...(input.metadata !== undefined && { metadata: input.metadata }),
     },
-    select: {
-      id: true,
-      formId: true,
-      formVersionId: true,
-      submittedAt: true,
-    },
+    select: submissionCreatedSelect,
   });
 
+  await notifyFormSubmitted(submission);
   return submission;
 }
 

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@form-builder/shared": "*",
+    "@form-builder/db": "*",
     "dotenv": "^17.4.2",
     "bullmq": "^5.34.5",
     "ioredis": "^5.4.2"
@@ -21,5 +22,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "module"
 }
