@@ -6,9 +6,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
+    "dev": "concurrently -n api,web,engine -c blue,green,yellow \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:engine\"",
     "dev:web": "npm run dev -w @form-builder/web",
     "dev:api": "npm run dev -w @form-builder/api",
+    "dev:engine": "npm run dev -w @form-builder/engine",
     "build": "npm run build -w @form-builder/web",
     "db:up": "npm run db:up -w @form-builder/api",
     "db:down": "npm run db:down -w @form-builder/api",

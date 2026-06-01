@@ -2,6 +2,7 @@ import { FormStatus, prisma, type Prisma } from "@form-builder/db";
 import { BadRequestError, NotFoundError } from "../errors/app-error.js";
 import { validateSubmissionResponse } from "../lib/validateSubmission.js";
 import type { FormSchema } from "../types/form-schema.js";
+import { enqueueFormSubmitted } from "../queue/enqueue-form-submitted.js";
 
 export interface CreateSubmissionInput {
   responseData: Record<string, unknown>;
@@ -81,8 +82,16 @@ export const createSubmissionByPublicToken = async (
       formId: true,
       formVersionId: true,
       submittedAt: true,
+      workspaceId: true
     }
   });
+
+  await enqueueFormSubmitted({
+    formId: submission.formId,
+    formVersionId: submission.formVersionId,
+    submissionId: submission.id,
+    workspaceId: submission.workspaceId
+  })
 
   return submission;
 }
