@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+.DS_Store
+
+# Prisma generated client
+packages/db/src/generated
+
+# Vite
+apps/web/dist

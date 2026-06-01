@@ -1,0 +1,331 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  EDITOR
+  ANALYST
+  VIEWER
+}
+
+enum WorkflowTriggerType {
+  FORM_SUBMITTED
+  WEBHOOK_RECEIVED
+  SCHEDULED
+  MANUAL
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum WorkflowNodeType {
+  TRIGGER
+  CONDITION
+
+  SLACK
+  EMAIL
+  WEBHOOK
+
+  DELAY
+
+  GOOGLE_SHEETS
+  DISCORD
+  NOTION
+
+  AI_AGENT
+
+  TRANSFORM
+  FILTER
+
+  END
+}
+
+enum WorkflowExecutionStatus {
+  PENDING
+  RUNNING
+  WAITING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum StepExecutionStatus {
+  PENDING
+  RUNNING
+  WAITING
+  SUCCESS
+  FAILED
+  SKIPPED
+  CANCELLED
+}
+
+enum IntegrationProvider {
+  SLACK
+  GMAIL
+  SMTP
+  DISCORD
+  NOTION
+  GOOGLE_SHEETS
+  GOOGLE_DRIVE
+  TELEGRAM
+  WHATSAPP
+  HUBSPOT
+  SALESFORCE
+  AIRTABLE
+  ZOHO
+  STRIPE
+  RAZORPAY
+  OPENAI
+  WEBHOOK
+  CUSTOM_API
+}
+
+enum WorkflowNodeCategory {
+  TRIGGER
+  ACTION
+  LOGIC
+  FLOW_CONTROL
+  AI
+}
+
+// ---------------------------- WORKSPACE SETUP ---------------------
+model Workspace {
+  id    String          @id @default(cuid())
+  name  String
+  slug  String          @unique
+  users WorkspaceUser[]
+
+  forms                  Form[]
+  workflows              Workflow[]
+  integrationConnections IntegrationConnection[]
+  submissions            Submission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id String @id @default(cuid())
+
+  email String  @unique
+  name  String?
+
+  workspaces WorkspaceUser[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkspaceUser {
+  id String @id @default(cuid())
+
+  workspaceId String
+  userId      String
+
+  role      WorkspaceRole
+  workspace Workspace     @relation(fields: [workspaceId], references: [id])
+  user      User          @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([workspaceId, userId])
+}
+
+// ---------------------------- FORM ---------------------
+model Form {
+  id String @id @default(cuid())
+
+  workspaceId String
+
+  name        String
+  description String?
+
+  publicToken  String? @unique
+  publishedVersion   Int?
+
+  status FormStatus
+
+  latestVersion Int @default(1)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  versions    FormVersion[]
+  submissions Submission[]
+
+  deletedAt     DateTime?
+  deletedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FormVersion {
+  id String @id @default(cuid())
+
+  formId String
+
+  version Int
+  schema  Json
+  form    Form @relation(fields: [formId], references: [id])
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  submissions Submission[]
+
+  @@unique([formId, version])
+}
+
+model Submission {
+  id String @id @default(cuid())
+
+  workspaceId   String
+  formId        String
+  formVersionId String
+
+  responseData Json
+  metadata     Json?
+
+  submittedAt DateTime @default(now())
+
+  form        Form        @relation(fields: [formId], references: [id])
+  formVersion FormVersion @relation(fields: [formVersionId], references: [id])
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
+
+  workflowExecutions WorkflowExecution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId, formId, formVersionId])
+}
+
+// ---------------------------- WORKFLOW ---------------------
+model Workflow {
+  id String @id @default(cuid())
+
+  workspaceId String
+  name        String
+  isActive    Boolean @default(true)
+
+  triggerType   WorkflowTriggerType
+  triggerConfig Json
+
+  nodes      WorkflowNode[]
+  edges      WorkflowEdge[]
+  executions WorkflowExecution[]
+
+  deletedAt     DateTime?
+  deletedReason String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+}
+
+model WorkflowNode {
+  id String @id @default(cuid())
+
+  workflowId String
+  name       String
+  category   WorkflowNodeCategory
+  provider   IntegrationProvider?
+  action     String?
+  positionX  Float
+  positionY  Float
+  config     Json
+
+  stepExecutions WorkflowStepExecution[]
+  workflow       Workflow                @relation(fields: [workflowId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkflowEdge {
+  id String @id @default(cuid())
+
+  workflowId   String
+  sourceNodeId String
+  targetNodeId String
+
+  workflow Workflow @relation(fields: [workflowId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkflowExecution {
+  id String @id @default(cuid())
+
+  submissionId   String?
+  workflowId     String
+  triggerPayload Json?
+
+  status WorkflowExecutionStatus
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  workflow   Workflow    @relation(fields: [workflowId], references: [id])
+  submission Submission? @relation(fields: [submissionId], references: [id])
+
+  workflowStepExecutions WorkflowStepExecution[]
+
+  @@index([submissionId, workflowId, status])
+}
+
+model WorkflowStepExecution {
+  id                  String @id @default(cuid())
+  workflowExecutionId String
+  nodeId              String
+
+  status StepExecutionStatus
+
+  input  Json?
+  output Json?
+  error  Json?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id])
+  node              WorkflowNode      @relation(fields: [nodeId], references: [id])
+
+  @@index([workflowExecutionId, status, nodeId])
+}
+
+model IntegrationConnection {
+  id String @id @default(cuid())
+
+  workspaceId String
+
+  provider IntegrationProvider
+
+  name String?
+
+  externalAccountId String
+
+  config   Json
+  isActive Boolean @default(true)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId, provider])
+}
