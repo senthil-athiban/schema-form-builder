@@ -8,10 +8,11 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
-    "@form-builder/shared": "*",
     "@form-builder/db": "*",
-    "dotenv": "^17.4.2",
+    "@form-builder/shared": "*",
+    "@nangohq/node": "^0.71.12",
     "bullmq": "^5.34.5",
+    "dotenv": "^17.4.2",
     "ioredis": "^5.4.2"
   },
   "devDependencies": {

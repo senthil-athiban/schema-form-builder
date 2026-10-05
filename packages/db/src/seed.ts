@@ -179,21 +179,25 @@ async function main() {
   await prisma.workflowNode.upsert({
     where: { id: SEED_WEBHOOK_NODE_ID },
     update: {
-      name: "Send webhook",
+      name: "Send Slack message",
       category: WorkflowNodeCategory.ACTION,
-      provider: IntegrationProvider.WEBHOOK,
-      config: { url: webhookUrl, method: "POST" },
+      provider: IntegrationProvider.SLACK,
+      config: {
+        channel: process.env.SEED_SLACK_CHANNEL_ID ?? "C0867KMRB1S",
+      },
     },
     create: {
       id: SEED_WEBHOOK_NODE_ID,
       workflowId: workflow.id,
-      name: "Send webhook",
+      name: "Send Slack message",
       category: WorkflowNodeCategory.ACTION,
-      provider: IntegrationProvider.WEBHOOK,
-      action: "send",
+      provider: IntegrationProvider.SLACK,
+      action: "post-message",
       positionX: 280,
       positionY: 0,
-      config: { url: webhookUrl, method: "POST" },
+      config: {
+        channel: process.env.SEED_SLACK_CHANNEL_ID ?? "C0867KMRB1S",
+      },
     },
   });
 

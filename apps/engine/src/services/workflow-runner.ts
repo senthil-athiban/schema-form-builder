@@ -14,6 +14,7 @@ import {
   executeWebhook,
   type WebhookConfig,
 } from "../executors/webhook.executor.js";
+import { executeSlackMessage, parseSlackConfig } from "../executors/slack.executor.js";
 
 type WorkflowWithGraph = Workflow & {
   nodes: WorkflowNode[];
@@ -132,6 +133,31 @@ async function runNode(
   ) {
     const config = parseWebhookConfig(node.config);
     return executeWebhook(config, buildWebhookPayload(submission));
+  }
+
+  if (node.category === WorkflowNodeCategory.ACTION && node.provider === IntegrationProvider.SLACK) {
+    const { channel } = parseSlackConfig(node.config);
+
+    const connection = await prisma.integrationConnection.findFirst({
+      where: {
+        workspaceId: submission.workspaceId,
+        provider: IntegrationProvider.SLACK,
+        isActive: true
+      }
+    });
+
+    if (!connection) {
+      throw new Error("No active Slack connection for this workspace");
+    }
+
+    const payload = buildWebhookPayload(submission);
+    const text = [
+      `New submission on ${payload.form.name}`,
+      `Submission: ${payload.submission.id}`,
+      `Data: ${JSON.stringify(payload.submission.responseData)}`,
+    ].join("\n");
+
+    return executeSlackMessage(connection.externalAccountId, channel, text);
   }
 
   throw new Error(
