@@ -64,43 +64,65 @@ function parseWebhookConfig(config: unknown): WebhookConfig {
 
 function getNodesInExecutionOrder(workflow: WorkflowWithGraph): WorkflowNode[] {
   const trigger = workflow.nodes.find((n) => n.category === WorkflowNodeCategory.TRIGGER);
-  const nodes: WorkflowNode[] = [];
 
   if (!trigger) {
     throw new Error(`Workflow ${workflow.id} has no TRIGGER node`);
   }
 
-  nodes.push(trigger);
+  // lookup nodeId -> node
+  const nodeById = new Map(workflow.nodes.map((n) => [n.id, n]));
 
-  let current = trigger;
-  while (true) {
-
-    const edge = workflow.edges.find((e) => e.sourceNodeId === current.id);
-    if (!edge) break;
-
-    const next = workflow.nodes.find((n) => n.id === edge.targetNodeId);
-    if (!next) {
-      throw new Error(`Workflow ${workflow.id} has no target node for trigger edge`);
-    }
-    current = next;
-    nodes.push(next);
-    if (next.category === WorkflowNodeCategory.FLOW_CONTROL /* or END type */) break;
-    current = next;
+  const outgoing = new Map<string, string[]>();
+  for (const edge of workflow.edges) {
+    if (!nodeById.has(edge.sourceNodeId) || !nodeById.has(edge.targetNodeId)) continue;
+    const targets = outgoing.get(edge.sourceNodeId) ?? [];
+    targets.push(edge.targetNodeId);
+    outgoing.set(edge.sourceNodeId, targets);
   }
-  console.log('nodes:', nodes.map((n) => `${n.name} - ${n.category}, `));
-  return nodes;
 
-  // const edge = workflow.edges.find((e) => e.sourceNodeId === trigger.id);
-  // if (!edge) {
-  //   throw new Error(`Workflow ${workflow.id} has no edge from trigger`);
-  // }
+  // 1. Only nodes reachable from the trigger run
+  const reachable = new Set<string>([trigger.id]);
 
-  // const action = workflow.nodes.find((n) => n.id === edge.targetNodeId);
-  // if (!action) {
-  //   throw new Error(`Workflow ${workflow.id} has no target node for trigger edge`);
-  // }
+  const stack = [trigger.id];
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    for (const target of outgoing.get(id) ?? []) {
+      if (!reachable.has(target)) {
+        reachable.add(target);
+        stack.push(target);
+      }
+    }
+  }
 
-  // return [trigger, action];
+  // 2. Topological order: a node runs only after all of its parents ran
+  const inDegree = new Map<string, number>();
+  for (const id of reachable) inDegree.set(id, 0);
+  for (const id of reachable) {
+    for (const target of outgoing.get(id) ?? []) {
+      inDegree.set(target, inDegree.get(target)! + 1)
+    }
+  }
+
+
+  const queue = [trigger.id];
+  const ordered: WorkflowNode[] = [];
+
+  while(queue.length > 0) {
+    const id = queue.shift()!;
+    ordered.push(nodeById.get(id)!);
+    for (const target of outgoing.get(id) ?? []) {
+      const remaining = inDegree.get(target)! - 1;
+      inDegree.set(target, remaining)
+      if (remaining === 0) queue.push(target);
+    }
+  }
+
+  if (ordered.length !== reachable.size) {
+    throw new Error(`Workflow ${workflow.id} contains a loop`);
+  }
+
+  console.log("[engine] execution order:", ordered.map((n) => `${n.name} (${n.category})`).join(" → "));
+  return ordered;
 }
 
 function buildWebhookPayload(submission: SubmissionWithForm) {
@@ -136,10 +158,11 @@ async function runNode(
   }
 
   if (node.category === WorkflowNodeCategory.ACTION && node.provider === IntegrationProvider.SLACK) {
-    const { channel } = parseSlackConfig(node.config);
+    const { channel, connectionId, message } = parseSlackConfig(node.config);
 
     const connection = await prisma.integrationConnection.findFirst({
       where: {
+        ...(connectionId ? { id: connectionId } : {}),
         workspaceId: submission.workspaceId,
         provider: IntegrationProvider.SLACK,
         isActive: true
@@ -147,11 +170,16 @@ async function runNode(
     });
 
     if (!connection) {
-      throw new Error("No active Slack connection for this workspace");
+      throw new Error(
+        connectionId
+          ? `Slack connection ${connectionId} is missing or inactive`
+          : "No active Slack connection for this workspace",
+      );
     }
 
     const payload = buildWebhookPayload(submission);
     const text = [
+      ...(message ? [message, ""] : []),
       `New submission on ${payload.form.name}`,
       `Submission: ${payload.submission.id}`,
       `Data: ${JSON.stringify(payload.submission.responseData)}`,

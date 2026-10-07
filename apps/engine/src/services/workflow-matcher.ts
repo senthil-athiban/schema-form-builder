@@ -14,8 +14,8 @@ export async function findWorkflowsForFormSubmit(job: FormSubmittedJobData) {
       },
     },
     include: {
-      nodes: true,
-      edges: true,
+      nodes: { where: { deletedAt: null }},
+      edges: true
     },
   });
 }

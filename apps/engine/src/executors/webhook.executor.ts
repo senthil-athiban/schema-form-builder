@@ -17,14 +17,17 @@ export async function executeWebhook(
     form: { id: string; name: string };
   },
 ) {
+  const method = config.method ?? "POST";
   const res = await fetch(config.url, {
-    method: config.method ?? "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
       ...config.headers,
     },
-    body: JSON.stringify(payload),
+    ...(method === "GET" ? {} : { body: JSON.stringify(payload) }),
+    signal: AbortSignal.timeout(10_000),
   });
+
 
   const text = await res.text();
   if (!res.ok) {
