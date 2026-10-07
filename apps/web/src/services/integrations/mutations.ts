@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { integrationsApi } from "@/shared/api/integrations.api";
 import type { CreateConnectSessionResult } from "@/shared/api/types";
-import { integrationsQueryKeys } from "./queries";
+import { integrationsQueryKeys } from "./keys";
 
 export function useCreateSlackConnectSessionMutation(workspaceId: string) {
   const queryClient = useQueryClient();

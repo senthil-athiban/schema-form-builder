@@ -1,5 +1,5 @@
 import { get, post, getWorkspaceId } from "./client";
-import type { ApiResponse, ApiResult } from "./types";
+import type { ApiResponse, ApiResult, SlackChannel } from "./types";
 import type {
   CreateConnectSessionResult,
   IntegrationConnectionItem,
@@ -23,4 +23,13 @@ export const integrationsApi = {
     );
     return { data: result.data.data, status: result.status } satisfies ApiResult<CreateConnectSessionResult>;
   },
+
+  async listSlackChannels(connectionId: string, workspaceId?: string) {
+    const id = workspaceId ?? getWorkspaceId();
+    const result = await get<ApiResponse<SlackChannel[]>>(
+      `/workspaces/${id}/integrations/${connectionId}/slack/channels`,
+    );
+    return { data: result.data.data, status: result.status } satisfies ApiResult<SlackChannel[]>;
+  },
+
 };

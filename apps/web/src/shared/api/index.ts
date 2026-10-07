@@ -14,3 +14,4 @@ export { submissionsApi } from "./submissions.api";
 export { getPublicFormPath, getPublicFormUrl } from "../lib/public-form-url";
 export type * from "./types";
 export { integrationsApi } from "./integrations.api";
+export { workflowsApi } from "./workflows.api";

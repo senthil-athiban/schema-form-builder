@@ -141,3 +141,100 @@ export interface CreateConnectSessionResult {
   connectLink: string;
   expiresAt: string;
 }
+
+// ---------------------------- Slack ----------------------------
+
+export interface SlackChannel {
+  id: string;
+  name: string;
+  isPrivate: boolean;
+  isMember: boolean;
+}
+
+// ---------------------------- Workflows ----------------------------
+
+export type WorkflowNodeCategory = "TRIGGER" | "ACTION";
+export type WorkflowActionProvider = "SLACK" | "WEBHOOK";
+export type WebhookMethod = "POST" | "GET" | "PUT";
+
+export interface SlackNodeConfig {
+  connectionId: string;
+  channelId: string;
+  channelName?: string;
+  message?: string;
+}
+
+export interface WebhookNodeConfig {
+  url: string;
+  method?: WebhookMethod;
+  headers?: Record<string, string>;
+}
+
+export interface WorkflowNodeRecord {
+  id: string;
+  workflowId: string;
+  name: string;
+  category: WorkflowNodeCategory;
+  provider: WorkflowActionProvider | null;
+  action: string | null;
+  positionX: number;
+  positionY: number;
+  config: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowEdgeRecord {
+  id: string;
+  workflowId: string;
+  sourceNodeId: string;
+  targetNodeId: string;
+}
+
+export interface WorkflowRecord {
+  id: string;
+  workspaceId: string;
+  name: string;
+  isActive: boolean;
+  triggerType: "FORM_SUBMITTED";
+  triggerConfig: { formId: string };
+  nodes: WorkflowNodeRecord[];
+  edges: WorkflowEdgeRecord[];
+}
+
+export interface WorkflowListItem {
+  id: string;
+  name: string;
+  isActive: boolean;
+  triggerType: "FORM_SUBMITTED";
+  triggerConfig: { formId: string };
+  _count: { nodes: number };
+}
+
+export interface CreateWorkflowPayload {
+  formId: string;
+  name: string;
+}
+
+export interface WorkflowNodeInput {
+  id: string;
+  name: string;
+  category: WorkflowNodeCategory;
+  provider?: WorkflowActionProvider | null;
+  action?: string | null;
+  positionX: number;
+  positionY: number;
+  config: Record<string, unknown>;
+}
+
+export interface WorkflowEdgeInput {
+  sourceNodeId: string;
+  targetNodeId: string;
+}
+
+export interface SaveWorkflowPayload {
+  name: string;
+  isActive: boolean;
+  nodes: WorkflowNodeInput[];
+  edges: WorkflowEdgeInput[];
+}
