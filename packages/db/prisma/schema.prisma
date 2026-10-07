@@ -247,6 +247,7 @@ model WorkflowNode {
   positionX  Float
   positionY  Float
   config     Json
+  deletedAt  DateTime?
 
   stepExecutions WorkflowStepExecution[]
   workflow       Workflow                @relation(fields: [workflowId], references: [id])

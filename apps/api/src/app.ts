@@ -6,6 +6,7 @@ import formRouter from "./routes/form.routes.js";
 import publicRouter from "./routes/public.routes.js";
 import integrationRouter from "./routes/integration.routes.js";
 import nangoWebhookRouter from "./routes/nango-webhook.routes.js";
+import workflowRouter from "./routes/workflow.routes.js";
 
 const API_V1 = "/api/v1";
 export function createApp() {
@@ -31,6 +32,8 @@ export function createApp() {
 
   app.use(`${API_V1}/workspaces/:workspaceId/integrations`, integrationRouter);
   app.use("/api/v1/integrations/nango", nangoWebhookRouter);
+  app.use(`${API_V1}/workspaces/:workspaceId/workflows`, workflowRouter);
+
   app.use(errorHandler);
 
   return app;
