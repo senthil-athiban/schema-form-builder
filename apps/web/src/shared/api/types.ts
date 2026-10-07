@@ -127,3 +127,17 @@ export interface SubmissionDetail extends SubmissionRecord {
   metadata: Record<string, unknown> | null;
   createdAt: string;
 }
+
+export interface IntegrationConnectionItem {
+  id: string;
+  provider: string;
+  name: string | null;
+  externalAccountId: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateConnectSessionResult {
+  connectLink: string;
+  expiresAt: string;
+}

@@ -13,6 +13,7 @@ import { getPublicFormUrl, getWorkspaceId } from "@/shared/api";
 import type { FormListItem, FormStatus } from "@/shared/api/types";
 import { useFormsListQuery } from "@/services/forms/queries";
 import { usePublishFormMutation } from "@/services/forms/mutations";
+import { SlackConnect } from "./slack-connect.component";
 
 const statusStyles: Record<FormStatus, string> = {
   DRAFT: "bg-amber-50 text-amber-700 ring-amber-200",
@@ -73,6 +74,7 @@ export const FormsList: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <SlackConnect />
             <button
               type="button"
               onClick={() => void formsQuery.refetch()}
