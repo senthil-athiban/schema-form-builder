@@ -1,20 +1,12 @@
 import type { WebhookMethod, WebhookNodeConfig } from "@/shared/api/types";
 import { useWorkflowEditorStore } from "../../store/workflow-editor-store";
 import type { WorkflowCanvasNode } from "../../types";
+import { isValidHttpUrl } from "@/workflow-builder/utils/validation";
 
 const METHODS: WebhookMethod[] = ["POST", "PUT", "GET"];
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none";
-
-const isValidUrl = (value: string) => {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-};
 
 interface WebhookNodePanelProps {
   node: WorkflowCanvasNode;
@@ -24,7 +16,7 @@ export const WebhookNodePanel: React.FC<WebhookNodePanelProps> = ({ node }) => {
   const updateNodeConfig = useWorkflowEditorStore((s) => s.updateNodeConfig);
   const config = node.data.config as Partial<WebhookNodeConfig>;
   const method = config.method ?? "POST";
-  const showUrlError = Boolean(config.url) && !isValidUrl(config.url!);
+  const showUrlError = Boolean(config.url) && !isValidHttpUrl(config.url!);
 
   return (
     <div className="space-y-4">
