@@ -89,14 +89,14 @@ export const createSubmissionByPublicToken = async (
 
   const formVersion = await getFormVersion(form.id, publishedVersion);
   const schema = parseFormSchema(formVersion.schema);
-  validateSubmissionResponse(schema, input.responseData);
+  const responseData = validateSubmissionResponse(schema, input.responseData);
 
   const submission = await prisma.submission.create({
     data: {
       workspaceId: form.workspaceId,
       formId: form.id,
       formVersionId: formVersion.id,
-      responseData: input.responseData as Prisma.InputJsonValue,
+      responseData: responseData as Prisma.InputJsonValue,
       ...(input.metadata !== undefined && { metadata: input.metadata }),
     },
     select: submissionCreatedSelect,
@@ -115,14 +115,14 @@ export async function createSubmission(
   const formVersion = await getFormVersion(formId, version);
   const schema = parseFormSchema(formVersion.schema);
 
-  validateSubmissionResponse(schema, input.responseData);
+  const responseData = validateSubmissionResponse(schema, input.responseData);
 
   const submission = await prisma.submission.create({
     data: {
       workspaceId: form.workspaceId,
       formId: form.id,
       formVersionId: formVersion.id,
-      responseData: input.responseData as Prisma.InputJsonValue,
+      responseData: responseData as Prisma.InputJsonValue,
       ...(input.metadata !== undefined && { metadata: input.metadata }),
     },
     select: submissionCreatedSelect,

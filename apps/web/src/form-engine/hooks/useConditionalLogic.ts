@@ -5,40 +5,13 @@ import type {
   UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
+import {
+  areConditionsMet,
+  getTargetFieldIds,
+  getVisibleQuestionIds,
+} from "@form-builder/shared/form-validation";
 import type { EngineQuestion } from "../utils/helpers";
-import type { Action, Condition, FormSchema } from "@/shared/types";
-
-function getTargetFieldIds(targetFieldId: string): string[] {
-  return targetFieldId.split(",").map((id) => id.trim()).filter(Boolean);
-}
-
-function applyTargetAction(
-  action: Action,
-  conditionsMet: boolean,
-  visible: Set<string>,
-  enabled: Set<string>,
-) {
-  getTargetFieldIds(action.targetFieldId).forEach((targetId) => {
-    switch (action.type) {
-      case "show":
-        if (conditionsMet) visible.add(targetId);
-        else visible.delete(targetId);
-        break;
-      case "hide":
-        if (conditionsMet) visible.delete(targetId);
-        else visible.add(targetId);
-        break;
-      case "enable":
-        if (conditionsMet) enabled.add(targetId);
-        else enabled.delete(targetId);
-        break;
-      case "disable":
-        if (conditionsMet) enabled.delete(targetId);
-        else enabled.add(targetId);
-        break;
-    }
-  });
-}
+import type { FormSchema } from "@/shared/types";
 
 function setsEqual(a: Set<string>, b: Set<string>): boolean {
   if (a.size !== b.size) return false;
@@ -54,54 +27,20 @@ function computeVisibility(
   questions: EngineQuestion[],
   formData: Record<string, unknown>,
 ): { visible: Set<string>; enabled: Set<string> } {
-  // console.log('questions:', questions)
-  const visible = new Set(questions.filter((f) => !f.hidden).map((f) => f.id));
-  // console.log('visible:', visible)
-  const enabled = new Set(
-    questions.filter((f) => !f.disabled).map((f) => f.id),
-  );
+  const visible = getVisibleQuestionIds(schema, formData);
 
-  const evaluateCondition = (
-    condition: Condition,
-    formData: Record<string, unknown>,
-  ) => {
-    const fieldValue = formData[condition.fieldId];
-
-    switch (condition.operator) {
-      case "equals":
-        return fieldValue === condition.value;
-      case "notEquals":
-        return fieldValue !== condition.value;
-      case "contains":
-        return String(fieldValue).includes(String(condition.value));
-      case "greaterThan":
-        return Number(fieldValue) > Number(condition.value);
-      case "lessThan":
-        return Number(fieldValue) < Number(condition.value);
-      case "isEmpty":
-        return !fieldValue || fieldValue === "";
-      case "isNotEmpty":
-        return !!fieldValue && fieldValue !== "";
-      default:
-        return false;
-    }
-  };
-  // console.log('enabled:', enabled)
+  const enabled = new Set(questions.filter((f) => !f.disabled).map((f) => f.id));
   schema.conditionalLogic?.forEach((rule) => {
-    const conditionsMet = rule.conditions.reduce((acc, condition, idx) => {
-      const result = evaluateCondition(condition, formData);
-      if (idx === 0) return result;
-      return condition.logic === "OR" ? acc || result : acc && result;
-    }, false);
-    // console.log('conditionsMet:', conditionsMet)
-
+    const conditionsMet = areConditionsMet(rule.conditions, formData);
     rule.actions.forEach((action) => {
-      if (action.type === "setValue") return;
-      applyTargetAction(action, conditionsMet, visible, enabled);
+      if (action.type !== "enable" && action.type !== "disable") return;
+      const shouldEnable = action.type === "enable" ? conditionsMet : !conditionsMet;
+      getTargetFieldIds(action.targetFieldId).forEach((targetId) => {
+        if (shouldEnable) enabled.add(targetId);
+        else enabled.delete(targetId);
+      });
     });
   });
-  // console.log('visible:', visible)
-  // console.log('enabled:', enabled)
 
   return { visible, enabled };
 }

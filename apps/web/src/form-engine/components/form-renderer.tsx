@@ -214,7 +214,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
     } catch (error: unknown) {
       if (error instanceof ZodError) {
         // Set Zod validation errors
-        error.errors.forEach((err) => {
+        error.issues.forEach((err) => {
           const fieldName = String(err.path[0]);
           formMethods.setError(fieldName, {
             type: "manual",

@@ -1,4 +1,4 @@
-import { flattenQuestions } from "./flattenQuestions.js";
+import { getAllQuestions, validateSubmission } from "@form-builder/shared/form-validation";
 import type { FormSchema } from "../types/form-schema.js";
 
 export class SubmissionValidationError extends Error {
@@ -12,42 +12,27 @@ export class SubmissionValidationError extends Error {
   }
 }
 
-function isEmptyValue(value: unknown): boolean {
-  if (value === undefined || value === null) return true;
-  if (typeof value === "string" && value.trim() === "") return true;
-  if (Array.isArray(value) && value.length === 0) return true;
-  return false;
-}
-
 export function validateSubmissionResponse(
   schema: FormSchema,
   responseData: Record<string, unknown>,
-): void {
+): Record<string, unknown> {
   if (!responseData || typeof responseData !== "object" || Array.isArray(responseData)) {
     throw new SubmissionValidationError({
       responseData: "responseData must be a non-null object",
     });
   }
 
-  const fieldErrors: Record<string, string> = {};
+  const result = validateSubmission(schema, responseData);
 
-  for (const question of flattenQuestions(schema)) {
-    if (!question.required) continue;
-
-    const value = responseData[question.id];
-    if (question.type === "checkbox" && typeof value === "boolean") {
-      if (!value) {
-        fieldErrors[question.id] = `${question.label} is required`;
-      }
-      continue;
+  if (!result.success) {
+    const labels = new Map(getAllQuestions(schema).map((q) => [q.id, q.label || q.name]));
+    const fieldErrors: Record<string, string> = {};
+    for (const [fieldId, message] of Object.entries(result.fieldErrors)) {
+      const label = labels.get(fieldId);
+      fieldErrors[fieldId] = label ? `${label}: ${message}` : message;
     }
-
-    if (isEmptyValue(value)) {
-      fieldErrors[question.id] = `${question.label} is required`;
-    }
-  }
-
-  if (Object.keys(fieldErrors).length > 0) {
     throw new SubmissionValidationError(fieldErrors);
   }
+
+  return JSON.parse(JSON.stringify(result.data)) as Record<string, unknown>;
 }
