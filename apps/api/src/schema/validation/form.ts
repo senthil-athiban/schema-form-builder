@@ -50,6 +50,6 @@ const formSchemaZod = z
 export type FormSchemaType = z.infer<typeof formSchemaZod>;
 
 export const createFormBodySchema = z.object({
-  workspaceId: z.string().min(1),
+  workspaceId: z.string().min(1).optional(),
   schema: formSchemaZod,
 });

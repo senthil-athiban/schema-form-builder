@@ -123,13 +123,17 @@ model Workspace {
 model User {
   id String @id @default(cuid())
 
-  email String  @unique
-  name  String?
+  email         String  @unique
+  name          String?
+  emailVerified Boolean @default(false)
+  image         String?
 
   workspaces WorkspaceUser[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sessions   Session[]
+  accounts   Account[]
 }
 
 model WorkspaceUser {
@@ -147,6 +151,57 @@ model WorkspaceUser {
   @@unique([workspaceId, userId])
 }
 
+// ---------------------------- AUTH (Better Auth) ---------------------
+model Session {
+  id        String  @id @default(cuid())
+  userId    String
+  token     String  @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Short-lived tokens (email verification, password reset)
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([identifier])
+}
+
 // ---------------------------- FORM ---------------------
 model Form {
   id String @id @default(cuid())
@@ -156,8 +211,8 @@ model Form {
   name        String
   description String?
 
-  publicToken  String? @unique
-  publishedVersion   Int?
+  publicToken      String? @unique
+  publishedVersion Int?
 
   status FormStatus
 

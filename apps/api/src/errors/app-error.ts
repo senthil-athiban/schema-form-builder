@@ -30,3 +30,10 @@ export class FormClosedError extends AppError {
     this.name = "FormClosedError";
   }
 }
+
+export class UnauthorizedError extends AppError {
+  constructor(message = "Sign in required") {
+    super(message, 401);
+    this.name = "UnauthorizedError"
+  }
+}

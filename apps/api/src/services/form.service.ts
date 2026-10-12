@@ -38,11 +38,9 @@ const createForm = async (formName: string, workspaceId: string, schema: Prisma.
     })
 }
 
-const getFormById = async (formId: string) => {
-    const hasId = await verifyFormId(formId);
-    if (!hasId) throw new NotFoundError("Form ID not found");
+const getFormById = async (formId: string, workspaceId: string) => {
     const form = await prisma.form.findFirst({
-        where: { id: formId, deletedAt: null }
+        where: { id: formId, workspaceId, deletedAt: null }
     });
 
     if (!form) throw new NotFoundError("Form not found");
@@ -56,6 +54,7 @@ const getFormById = async (formId: string) => {
     if (!formVersion) throw new NotFoundError("Form version not found");
     return { form, formVersion };
 }
+
 
 const updateForm = async (
     formId: string,
@@ -146,9 +145,9 @@ const listForms = async (workspaceId: string) => {
     });
 };
 
-const publishForm = async (formId: string) => {
+const publishForm = async (formId: string, workspaceId: string) => {
     const form = await prisma.form.findFirst({
-        where: { id: formId, deletedAt: null }
+        where: { id: formId, deletedAt: null, workspaceId }
     });
 
     if (!form) throw new NotFoundError("Form is not found");
@@ -179,9 +178,9 @@ const publishForm = async (formId: string) => {
 
 }
 
-const unpublishForm = async (formId: string) => {
+const unpublishForm = async (formId: string, workspaceId: string) => {
     const form = await prisma.form.findFirst({
-        where: { id: formId, deletedAt: null }
+        where: { id: formId, deletedAt: null, workspaceId }
     });
 
     if (!form) throw new NotFoundError("Form not found");
@@ -199,8 +198,7 @@ const getPublicFormByToken = async (token: string) => {
     const form = await prisma.form.findFirst({
         where: {
             publicToken: token,
-            deletedAt: null,
-            status: FormStatus.PUBLISHED,
+            deletedAt: null
         },
     });
 

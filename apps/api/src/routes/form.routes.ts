@@ -2,8 +2,10 @@ import { Router } from "express";
 import type { Prisma } from "@form-builder/db";
 import { asyncHandler } from "../middleware/async-handler";
 import { createFormBodySchema } from "../schema/validation/form";
-import { BadRequestError } from "../errors/app-error";
+import { BadRequestError, NotFoundError } from "../errors/app-error";
 import formService from "../services/form.service";
+import { getAuth } from "../middleware/require-auth";
+import { prisma } from "@form-builder/db";
 
 const formRouter = Router();
 
@@ -28,12 +30,7 @@ function parseFormBody(body: unknown) {
 formRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const workspaceId = req.query.workspaceId;
-    if (typeof workspaceId !== "string" || !workspaceId) {
-      throw new BadRequestError("workspaceId query parameter is required");
-    }
-
-    const forms = await formService.listForms(workspaceId);
+    const forms = await formService.listForms(getAuth(req).workspaceId);
     res.json({ data: forms });
   }),
 );
@@ -50,7 +47,8 @@ formRouter.post(
       });
     }
 
-    const { workspaceId, schema } = parsed.data;
+    const { schema } = parsed.data;
+    const { workspaceId } = getAuth(req);
     const result = await formService.createForm(
       schema.metadata.title,
       workspaceId,
@@ -64,7 +62,8 @@ formRouter.put(
   "/:formId",
   asyncHandler(async (req, res) => {
     const formId = getFormIdParam(req.params.formId);
-    const { workspaceId, schema } = parseFormBody(req.body);
+    const { schema } = parseFormBody(req.body);
+    const { workspaceId } = getAuth(req);
     const result = await formService.updateForm(
       formId,
       schema.metadata.title,
@@ -79,7 +78,7 @@ formRouter.get(
   "/:formId",
   asyncHandler(async (req, res) => {
     const formId = getFormIdParam(req.params.formId);
-    const { form, formVersion } = await formService.getFormById(formId);
+    const { form, formVersion } = await formService.getFormById(formId, getAuth(req).workspaceId);
     res.json({
       data: {
         form,
@@ -94,7 +93,7 @@ formRouter.put(
   "/:formId/publish",
   asyncHandler(async (req, res) => {
     const formId = getFormIdParam(req.params.formId);
-    const response = await formService.publishForm(formId);
+    const response = await formService.publishForm(formId, getAuth(req).workspaceId);
     res.json({
       data: response
     });
@@ -105,7 +104,7 @@ formRouter.put(
   "/:formId/unpublish",
   asyncHandler(async (req, res) => {
     const formId = getFormIdParam(req.params.formId);
-    const response = await formService.unpublishForm(formId);
+    const response = await formService.unpublishForm(formId, getAuth(req).workspaceId);
     res.json({
       data: response
     });
