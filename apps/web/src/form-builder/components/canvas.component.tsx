@@ -60,11 +60,8 @@ const Canvas = () => {
   const [pageTitleInput, setPageTitleInput] = useState("");
   const [sectionTitleInput, setSectionTitleInput] = useState("");
 
-  const { currentForm, selection, setSelection, addPage, addSection } =
+  const { currentForm, selection, setSelection, addPage, addSection, updateFormMetadata } =
     useFormBuilderStore();
-  // const { setNodeRef, isOver } = useDroppable({
-  //   id: "canvas-drop-zone",
-  // });
   const selectedPageId =
     selection?.type === "page" ||
     selection?.type === "section" ||
@@ -158,16 +155,24 @@ const Canvas = () => {
         className={`min-h-full flex-1 overflow-y-auto p-8 transition-colors ${"bg-white"}`}
       >
         <div className="mx-auto max-w-4xl">
-          <div className="mb-8 border-b-2 border-slate-200 pb-4">
-            <h2 className="mb-1 text-2xl font-semibold text-slate-900">
-              {currentForm.metadata.title}
-            </h2>
-            {currentForm.metadata.description && (
-              <p className="text-sm text-slate-500">
-                {currentForm.metadata.description}
-              </p>
-            )}
+        <div className="mb-8 border-b-2 border-slate-200 pb-4">
+            <input
+              value={currentForm.metadata.title}
+              onChange={(e) => updateFormMetadata({ title: e.target.value })}
+              placeholder="Untitled form"
+              aria-label="Form title"
+              className="-mx-2 mb-1 w-full rounded-md border border-transparent px-2 py-1 text-2xl font-semibold text-slate-900 transition placeholder:text-slate-300 hover:border-slate-200 focus:border-indigo-400 focus:outline-none"
+            />
+            <textarea
+              value={currentForm.metadata.description ?? ""}
+              onChange={(e) => updateFormMetadata({ description: e.target.value })}
+              placeholder="Add a description (optional)"
+              aria-label="Form description"
+              rows={1}
+              className="-mx-2 w-full resize-none rounded-md border border-transparent px-2 py-1 text-sm text-slate-500 transition placeholder:text-slate-300 hover:border-slate-200 focus:border-indigo-400 focus:outline-none"
+            />
           </div>
+
 
           <p className="mb-4 text-xs font-medium tracking-wide text-slate-500 uppercase">
             Build order: <span className="text-slate-800">Page</span>

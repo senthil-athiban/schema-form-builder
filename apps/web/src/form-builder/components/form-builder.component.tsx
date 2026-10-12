@@ -37,6 +37,7 @@ import {
   useUpdateFormMutation,
 } from "@/services/forms/mutations";
 import { useFormByIdQuery } from "@/services/forms/queries";
+import { FormNameDialog } from "./form-name-dialog.component";
 
 export const FormBuilderEditor: React.FC = () => {
   const {
@@ -56,6 +57,7 @@ export const FormBuilderEditor: React.FC = () => {
     setPersistedFormId,
     openEditorWithForm,
     startNewFormInEditor,
+    updateFormMetadata
   } = useFormBuilderStore();
 
   const { formId: routeFormId } = useParams<{ formId?: string }>();
@@ -101,6 +103,8 @@ export const FormBuilderEditor: React.FC = () => {
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -301,6 +305,7 @@ export const FormBuilderEditor: React.FC = () => {
       startNewFormInEditor();
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadFormIdInput("");
+      setNameDialogOpen(true);
       return;
     }
     if (!formByIdQuery.data) return;
@@ -337,6 +342,7 @@ export const FormBuilderEditor: React.FC = () => {
     }
     startNewFormInEditor();
     setLoadFormIdInput("");
+    setNameDialogOpen(true);
   };
 
   const handleSave = async () => {
@@ -377,7 +383,18 @@ export const FormBuilderEditor: React.FC = () => {
     }
     resetForm();
     setLoadFormIdInput("");
+    setNameDialogOpen(true);
     void navigate("/forms/new");
+  };
+
+  const handleNameSubmit = ({ title, description }: { title: string; description: string }) => {
+    updateFormMetadata({ title, description });
+    setNameDialogOpen(false);
+  };
+
+  const handleNameCancel = () => {
+    setNameDialogOpen(false);
+    if (!persistedFormId) void navigate("/forms");
   };
 
   const iconButtonClass =
@@ -540,7 +557,8 @@ export const FormBuilderEditor: React.FC = () => {
 
           <button
             onClick={() => void handleSave()}
-            disabled={isSaving}
+            disabled={isSaving || !currentForm.metadata.title.trim()}
+            title={currentForm.metadata.title.trim() ? undefined : "Give the form a name first"}
             className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? (
@@ -550,6 +568,7 @@ export const FormBuilderEditor: React.FC = () => {
             )}
             {persistedFormId ? "Update Form" : "Save Form"}
           </button>
+
         </div>
       </div>
 
@@ -612,6 +631,12 @@ export const FormBuilderEditor: React.FC = () => {
           </div>
         )}
       </div>
+
+      {nameDialogOpen && (
+        <FormNameDialog onSubmit={handleNameSubmit} onCancel={handleNameCancel} />
+      )}
+
     </div>
+    
   );
 };
