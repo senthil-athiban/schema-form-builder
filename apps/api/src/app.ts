@@ -16,6 +16,7 @@ const API_V1 = "/api/v1";
 
 export function createApp() {
   const app = express();
+  if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 
   app.use(
     cors({
