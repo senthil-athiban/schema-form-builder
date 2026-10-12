@@ -3,7 +3,7 @@ import { ChevronRight, type LucideIcon } from "lucide-react";
 interface StatCardProps {
   icon: LucideIcon;
   iconClass: string;
-  value: number;
+  value: number | string;
   label: string;
   active?: boolean;
   onClick?: () => void;

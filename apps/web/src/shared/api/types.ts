@@ -43,6 +43,8 @@ export interface FormRecord {
   description: string | null;
   status: FormStatus;
   latestVersion: number;
+  publicToken?: string | null;
+  publishedVersion?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -113,13 +115,19 @@ export interface SubmissionRecord {
   submittedAt: string;
 }
 
-/** Row shape returned by `GET /forms/:formId/submissions` (list). */
 export interface SubmissionListItem {
   id: string;
   formVersionId: string;
   responseData: Record<string, unknown>;
   metadata: Record<string, unknown> | null;
   submittedAt: string;
+}
+
+export interface SubmissionFilters {
+  search?: string;
+  from?: string;
+  to?: string;
+  sort?: "asc" | "desc";
 }
 
 export interface SubmissionDetail extends SubmissionRecord {

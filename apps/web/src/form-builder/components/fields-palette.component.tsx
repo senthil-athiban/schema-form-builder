@@ -144,7 +144,6 @@ const DraggableField: React.FC<DraggableFieldProps> = ({
 };
 
 interface FieldsPaletteProps {
-  /** When false, fields cannot be dragged until the canvas has at least one section. */
   fieldsEnabled?: boolean;
 }
 

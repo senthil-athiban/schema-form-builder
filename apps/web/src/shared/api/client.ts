@@ -55,6 +55,13 @@ function appendQueryParams(
   return query ? `${url}?${query}` : url;
 }
 
+export function buildApiUrl(
+  path: string,
+  params?: Record<string, string | number | undefined>,
+): string {
+  return appendQueryParams(buildUrl(path), params);
+}
+
 async function parseJsonBody(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text) return null;

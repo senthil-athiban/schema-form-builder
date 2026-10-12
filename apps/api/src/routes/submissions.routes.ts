@@ -4,9 +4,12 @@ import { BadRequestError } from "../errors/app-error.js";
 import { asyncHandler } from "../middleware/async-handler.js";
 import {
   createSubmission,
+  exportSubmissions,
   getSubmission,
   listSubmissions,
+  type SubmissionFilters,
 } from "../services/submission.service.js";
+import { parseFilters } from "../utils/helpers.js";
 
 export const submissionsRouter = Router({ mergeParams: true });
 
@@ -94,10 +97,24 @@ submissionsRouter.get(
       : undefined;
 
     const result = await listSubmissions(formId, {
+      ...parseFilters(req.query),
       ...(limit !== undefined && { limit }),
       ...(offset !== undefined && { offset }),
     });
     res.json({ data: result.submissions, meta: { total: result.total, limit: result.limit, offset: result.offset } });
+  }),
+);
+
+submissionsRouter.get(
+  "/export",
+  asyncHandler(async (req, res) => {
+    const formId = getFormIdParam(req.params.formId);
+    const format = req.query.format === "json" ? "json" : "csv";
+
+    const file = await exportSubmissions(formId, format, parseFilters(req.query));
+    res.setHeader("Content-Type", file.contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
+    res.send(file.body);
   }),
 );
 

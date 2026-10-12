@@ -1,4 +1,6 @@
-import { FormStatus, prisma, type Prisma } from "@form-builder/db";
+import { FormStatus, Prisma, prisma } from "@form-builder/db";
+import { formatAnswer, getAnswerQuestions } from "@form-builder/shared/form-validation";
+import { toCsv } from "../lib/csv.js";
 import { BadRequestError, FormClosedError, NotFoundError } from "../errors/app-error.js";
 import { validateSubmissionResponse } from "../lib/validateSubmission.js";
 import type { FormSchema } from "../types/form-schema.js";
@@ -10,10 +12,21 @@ export interface CreateSubmissionInput {
   version?: number;
 }
 
-export interface ListSubmissionsOptions {
+export interface SubmissionFilters {
+  search?: string;
+  from?: Date;
+  to?: Date;
+  sort?: "asc" | "desc";
+}
+
+export interface ListSubmissionsOptions extends SubmissionFilters {
   limit?: number;
   offset?: number;
 }
+
+export type ExportFormat = "csv" | "json";
+
+const EXPORT_MAX_ROWS = 10_000;
 
 function parseFormSchema(schema: Prisma.JsonValue): FormSchema {
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
@@ -22,7 +35,7 @@ function parseFormSchema(schema: Prisma.JsonValue): FormSchema {
   return schema as unknown as FormSchema;
 }
 
-async function getPublishedForm(formId: string) {
+const getPublishedForm = async (formId: string) => {
   const form = await prisma.form.findFirst({
     where: {
       id: formId,
@@ -38,7 +51,7 @@ async function getPublishedForm(formId: string) {
   return form;
 }
 
-async function getFormVersion(formId: string, version: number) {
+const getFormVersion = async (formId: string, version: number) => {
   const formVersion = await prisma.formVersion.findUnique({
     where: {
       formId_version: { formId, version },
@@ -60,12 +73,12 @@ const submissionCreatedSelect = {
   submittedAt: true,
 } as const;
 
-async function notifyFormSubmitted(submission: {
+const notifyFormSubmitted = async (submission: {
   id: string;
   formId: string;
   formVersionId: string;
   workspaceId: string;
-}) {
+}) => {
   await enqueueFormSubmitted({
     submissionId: submission.id,
     formId: submission.formId,
@@ -106,10 +119,10 @@ export const createSubmissionByPublicToken = async (
   return submission;
 }
 
-export async function createSubmission(
+export const createSubmission = async(
   formId: string,
   input: CreateSubmissionInput,
-) {
+) => {
   const form = await getPublishedForm(formId);
   const version = input.version ?? form.latestVersion;
   const formVersion = await getFormVersion(formId, version);
@@ -132,7 +145,7 @@ export async function createSubmission(
   return submission;
 }
 
-export async function getSubmission(formId: string, submissionId: string) {
+export const getSubmission = async(formId: string, submissionId: string) => {
   const submission = await prisma.submission.findFirst({
     where: { id: submissionId, formId },
     select: {
@@ -153,26 +166,58 @@ export async function getSubmission(formId: string, submissionId: string) {
   return submission;
 }
 
-export async function listSubmissions(
-  formId: string,
-  options: ListSubmissionsOptions = {},
-) {
+const getActiveForm = async (formId: string) => {
   const form = await prisma.form.findFirst({
     where: { id: formId, deletedAt: null },
-    select: { id: true },
   });
+  if (!form) throw new NotFoundError("Form not found");
+  return form;
+}
 
-  if (!form) {
-    throw new NotFoundError("Form not found");
+const toLikePattern = (search: string) => `%${search.replace(/[\\%_]/g, "\\$&")}%`;
+
+const buildSubmissionWhere = async(
+  formId: string,
+  filters: SubmissionFilters,
+): Promise<Prisma.SubmissionWhereInput> => {
+  const where: Prisma.SubmissionWhereInput = { formId };
+
+  if (filters.from || filters.to) {
+    where.submittedAt = {
+      ...(filters.from && { gte: filters.from }),
+      ...(filters.to && { lte: filters.to }),
+    };
   }
+
+  if (filters.search) {
+    const matches = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT s.id FROM "Submission" s
+      WHERE s."formId" = ${formId}
+        AND EXISTS (
+          SELECT 1 FROM jsonb_each_text(s."responseData") AS answer(key, value)
+          WHERE answer.value ILIKE ${toLikePattern(filters.search)}
+        )
+    `);
+    where.id = { in: matches.map((m) => m.id) };
+  }
+
+  return where;
+}
+
+export const listSubmissions = async(
+  formId: string,
+  options: ListSubmissionsOptions = {},
+) => {
+  await getActiveForm(formId);
 
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
   const offset = Math.max(options.offset ?? 0, 0);
+  const where = await buildSubmissionWhere(formId, options);
 
   const [submissions, total] = await Promise.all([
     prisma.submission.findMany({
-      where: { formId },
-      orderBy: { submittedAt: "desc" },
+      where,
+      orderBy: { submittedAt: options.sort ?? "desc" },
       take: limit,
       skip: offset,
       select: {
@@ -183,8 +228,56 @@ export async function listSubmissions(
         submittedAt: true,
       },
     }),
-    prisma.submission.count({ where: { formId } }),
+    prisma.submission.count({ where }),
   ]);
 
   return { submissions, total, limit, offset };
+}
+
+export const exportSubmissions = async (formId: string, format: ExportFormat, filters: SubmissionFilters) => {
+  const form = await getActiveForm(formId);
+  const formVersion = await getFormVersion(formId, form.latestVersion);
+  const questions = getAnswerQuestions(parseFormSchema(formVersion.schema));
+
+  const submissions = await prisma.submission.findMany({
+    where: await buildSubmissionWhere(formId, filters),
+    orderBy: { submittedAt: filters.sort ?? "desc" },
+    take: EXPORT_MAX_ROWS,
+    select: { id: true, submittedAt: true, responseData: true },
+  });
+
+  const answersOf = (responseData: Prisma.JsonValue) =>
+    (responseData && typeof responseData === "object" && !Array.isArray(responseData)
+      ? responseData
+      : {}) as Record<string, unknown>;
+
+  const baseName = form.name.trim().replace(/[^\w-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "form";
+
+  if (format === "json") {
+    const rows = submissions.map((s) => {
+      const answers = answersOf(s.responseData);
+      return {
+        id: s.id,
+        submittedAt: s.submittedAt.toISOString(),
+        answers: Object.fromEntries(questions.map((q) => [q.label || q.name, answers[q.id] ?? null])),
+      };
+    });
+    return {
+      filename: `${baseName}-submissions.json`,
+      contentType: "application/json; charset=utf-8",
+      body: JSON.stringify(rows, null, 2),
+    };
+  }
+
+  const header = ["Submission ID", "Submitted at", ...questions.map((q) => q.label || q.name)];
+  const rows = submissions.map((s) => {
+    const answers = answersOf(s.responseData);
+    return [s.id, s.submittedAt.toISOString(), ...questions.map((q) => formatAnswer(q, answers[q.id]))];
+  });
+
+  return {
+    filename: `${baseName}-submissions.csv`,
+    contentType: "text/csv; charset=utf-8",
+    body: toCsv([header, ...rows]),
+  };
 }
