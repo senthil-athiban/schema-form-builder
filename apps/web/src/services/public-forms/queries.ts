@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { publicFormsApi } from "@/shared/api/public-forms.api";
+import { ApiError } from "@/shared/api/client";
 import type { PublicFormResult } from "@/shared/api/types";
 
 export const publicFormsQueryKeys = {
@@ -20,5 +21,7 @@ export function usePublicFormByTokenQuery(token: string | undefined) {
     queryKey: publicFormsQueryKeys.byToken(token ?? ""),
     queryFn: () => fetchPublicFormByToken(token ?? ""),
     enabled: Boolean(token),
+    retry: (failureCount, error) =>
+      !(error instanceof ApiError && error.status < 500) && failureCount < 3,
   });
 }

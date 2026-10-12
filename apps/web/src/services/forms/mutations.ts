@@ -60,3 +60,20 @@ export function usePublishFormMutation() {
     },
   });
 }
+
+export function useUnpublishFormMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formId: string) => {
+      const { data } = await formsApi.unpublish(formId);
+      return data;
+    },
+    onSuccess: (_data, formId) => {
+      void queryClient.invalidateQueries({ queryKey: formsQueryKeys.all });
+      void queryClient.invalidateQueries({
+        queryKey: formsQueryKeys.byId(formId),
+      });
+    },
+  });
+}

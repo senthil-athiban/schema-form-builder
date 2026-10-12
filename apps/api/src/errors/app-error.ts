@@ -23,3 +23,10 @@ export class BadRequestError extends AppError {
     this.name = "BadRequestError";
   }
 }
+
+export class FormClosedError extends AppError {
+  constructor() {
+    super("This form is no longer accepting responses", 410);
+    this.name = "FormClosedError";
+  }
+}

@@ -101,4 +101,15 @@ formRouter.put(
   }),
 );
 
+formRouter.put(
+  "/:formId/unpublish",
+  asyncHandler(async (req, res) => {
+    const formId = getFormIdParam(req.params.formId);
+    const response = await formService.unpublishForm(formId);
+    res.json({
+      data: response
+    });
+  }),
+);
+
 export default formRouter;

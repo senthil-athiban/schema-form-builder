@@ -1,5 +1,5 @@
 import { FormStatus, prisma, type Prisma } from "@form-builder/db";
-import { BadRequestError, NotFoundError } from "../errors/app-error.js";
+import { BadRequestError, FormClosedError, NotFoundError } from "../errors/app-error.js";
 import { validateSubmissionResponse } from "../lib/validateSubmission.js";
 import type { FormSchema } from "../types/form-schema.js";
 import { enqueueFormSubmitted } from "../queue/enqueue-form-submitted.js";
@@ -85,7 +85,7 @@ export const createSubmissionByPublicToken = async (
   if (!form) throw new NotFoundError("Form not found");
 
   const publishedVersion = form.publishedVersion;
-  if (!publishedVersion) throw new BadRequestError("Form not published");
+  if (form.status !== FormStatus.PUBLISHED || !publishedVersion) throw new FormClosedError();
 
   const formVersion = await getFormVersion(form.id, publishedVersion);
   const schema = parseFormSchema(formVersion.schema);

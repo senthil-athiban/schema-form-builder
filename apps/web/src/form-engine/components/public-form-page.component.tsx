@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, Lock } from "lucide-react";
 import { FormRenderer } from "./form-renderer";
 import { usePublicFormByTokenQuery } from "@/services/public-forms/queries";
 import { useSubmitPublicFormMutation } from "@/services/public-forms/mutations";
@@ -29,6 +29,21 @@ export const PublicFormPage: React.FC = () => {
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-500">
         <Loader2 className="mr-2 animate-spin" size={20} />
         Loading form…
+      </div>
+    );
+  }
+
+  const isClosed =
+    publicFormQuery.error instanceof ApiError && publicFormQuery.error.status === 410;
+
+  if (isClosed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
+          <Lock className="mx-auto mb-4 text-slate-400" size={40} aria-hidden />
+          <h1 className="text-xl font-semibold text-slate-900">This form is closed</h1>
+          <p className="mt-2 text-slate-600">It's no longer accepting responses.</p>
+        </div>
       </div>
     );
   }

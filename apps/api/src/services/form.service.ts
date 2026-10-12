@@ -1,5 +1,5 @@
 import { FormStatus, prisma, type Prisma } from "@form-builder/db";
-import { NotFoundError } from "../errors/app-error.js";
+import { BadRequestError, FormClosedError, NotFoundError } from "../errors/app-error.js";
 import { randomBytes } from "node:crypto";
 
 const createPublicToken = () => randomBytes(16).toString("base64url");
@@ -179,6 +179,22 @@ const publishForm = async (formId: string) => {
 
 }
 
+const unpublishForm = async (formId: string) => {
+    const form = await prisma.form.findFirst({
+        where: { id: formId, deletedAt: null }
+    });
+
+    if (!form) throw new NotFoundError("Form not found");
+    if (form.status !== FormStatus.PUBLISHED) throw new BadRequestError("Form is not published");
+
+    const updated = await prisma.form.update({
+        where: { id: form.id },
+        data: { status: FormStatus.DRAFT }
+    });
+
+    return { form: updated };
+}
+
 const getPublicFormByToken = async (token: string) => {
     const form = await prisma.form.findFirst({
         where: {
@@ -188,8 +204,10 @@ const getPublicFormByToken = async (token: string) => {
         },
     });
 
-    if (!form || form.publishedVersion == null) {
-        throw new NotFoundError("Published form not found");
+    if (!form) throw new NotFoundError("Form not found");
+
+    if (form.status !== FormStatus.PUBLISHED || form.publishedVersion == null) {
+        throw new FormClosedError();
     }
 
     const formVersion = await prisma.formVersion.findUnique({
@@ -216,4 +234,5 @@ export default {
     listForms,
     publishForm,
     getPublicFormByToken,
+    unpublishForm
 };

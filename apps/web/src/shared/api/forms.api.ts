@@ -4,6 +4,7 @@ import type {
   CreateFormPayload,
   CreateFormResult,
   FormListItem,
+  FormRecord,
   GetFormResult,
   PublishFormResult,
 } from "./types";
@@ -41,6 +42,13 @@ export const formsApi = {
   async publish(formId: string) {
     const result = await put<ApiResponse<PublishFormResult>>(
       `/form/${formId}/publish`,
+    );
+    return unwrapData(result);
+  },
+
+  async unpublish(formId: string) {
+    const result = await put<ApiResponse<{ form: FormRecord }>>(
+      `/form/${formId}/unpublish`,
     );
     return unwrapData(result);
   },

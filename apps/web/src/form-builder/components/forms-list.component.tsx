@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   ExternalLink,
+  EyeOff,
   FileText,
   Loader2,
   Plus,
@@ -13,7 +14,9 @@ import { Link } from "react-router-dom";
 import { getPublicFormUrl, getWorkspaceId } from "@/shared/api";
 import type { FormListItem, FormStatus } from "@/shared/api/types";
 import { useFormsListQuery } from "@/services/forms/queries";
-import { usePublishFormMutation } from "@/services/forms/mutations";
+import { usePublishFormMutation, useUnpublishFormMutation } from "@/services/forms/mutations";
+import { CopyLinkButton } from "@/shared/components/copy-link-button";
+import { copyToClipboard } from "@/shared/lib/clipboard";
 import { SlackConnect } from "./slack-connect.component";
 
 const statusStyles: Record<FormStatus, string> = {
@@ -21,6 +24,13 @@ const statusStyles: Record<FormStatus, string> = {
   PUBLISHED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   ARCHIVED: "bg-slate-100 text-slate-600 ring-slate-200",
 };
+
+function getStatusBadge(form: FormListItem) {
+  if (form.status === "DRAFT" && form.publicToken) {
+    return { label: "CLOSED", className: "bg-slate-100 text-slate-600 ring-slate-200" };
+  }
+  return { label: form.status, className: statusStyles[form.status] };
+}
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString(undefined, {
@@ -33,6 +43,7 @@ export const FormsList: React.FC = () => {
   const workspaceId = useMemo(() => getWorkspaceId(), []);
   const formsQuery = useFormsListQuery(workspaceId);
   const publishMutation = usePublishFormMutation();
+  const unpublishMutation = useUnpublishFormMutation();
   const forms: FormListItem[] = formsQuery.data ?? [];
   const isLoading = formsQuery.isLoading;
   const error = formsQuery.error instanceof Error
@@ -42,6 +53,9 @@ export const FormsList: React.FC = () => {
       : null;
   const publishingId = publishMutation.isPending
     ? publishMutation.variables ?? null
+    : null;
+  const unpublishingId = unpublishMutation.isPending
+    ? unpublishMutation.variables ?? null
     : null;
 
   const handlePublish = async (formId: string, formName: string) => {
@@ -56,11 +70,31 @@ export const FormsList: React.FC = () => {
     try {
       const data = await publishMutation.mutateAsync(formId);
       const publicUrl = getPublicFormUrl(data.publicToken);
-      window.prompt("Form published! Copy the public link:", publicUrl);
+      if (await copyToClipboard(publicUrl)) {
+        alert(`"${formName}" is live. The public link was copied to your clipboard.`);
+      } else {
+        window.prompt("Form published! Copy the public link:", publicUrl);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to publish form";
       alert(message);
+    }
+  };
+
+  const handleUnpublish = async (formId: string, formName: string) => {
+    if (
+      !window.confirm(
+        `Unpublish "${formName}"? The public link will stop accepting responses. Publishing again reopens the same link.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await unpublishMutation.mutateAsync(formId);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to unpublish form");
     }
   };
 
@@ -134,9 +168,12 @@ export const FormsList: React.FC = () => {
           <ul className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {forms.map((form) => {
               const isPublishing = publishingId === form.id;
-              const publicUrl = form.publicToken
+              const isUnpublishing = unpublishingId === form.id;
+              const isLive = form.status === "PUBLISHED";
+              const publicUrl = isLive && form.publicToken
                 ? getPublicFormUrl(form.publicToken)
                 : null;
+              const badge = getStatusBadge(form);
 
               return (
                 <li
@@ -156,9 +193,9 @@ export const FormsList: React.FC = () => {
                           {form.name}
                         </span>
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${statusStyles[form.status]}`}
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${badge.className}`}
                         >
-                          {form.status}
+                          {badge.label}
                         </span>
                         <span className="text-xs text-slate-400">
                           v
@@ -210,16 +247,38 @@ export const FormsList: React.FC = () => {
                       {form.status === "PUBLISHED" ? "Re-publish" : "Publish"}
                     </button>
 
-                    {publicUrl ? (
-                      <a
-                        href={publicUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 sm:text-sm"
+                    {isLive ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleUnpublish(form.id, form.name)}
+                        disabled={isUnpublishing || unpublishMutation.isPending}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 sm:text-sm"
                       >
-                        <ExternalLink size={14} />
-                        View live
-                      </a>
+                        {isUnpublishing ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <EyeOff size={14} />
+                        )}
+                        Unpublish
+                      </button>
+                    ) : null}
+
+                    {publicUrl ? (
+                      <>
+                        <CopyLinkButton
+                          url={publicUrl}
+                          className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 sm:text-sm"
+                        />
+                        <a
+                          href={publicUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 sm:text-sm"
+                        >
+                          <ExternalLink size={14} />
+                          View live
+                        </a>
+                      </>
                     ) : null}
                   </div>
                 </li>
