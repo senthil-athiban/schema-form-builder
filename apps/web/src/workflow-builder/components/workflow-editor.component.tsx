@@ -56,7 +56,6 @@ const WorkflowEditorInner: React.FC = () => {
   const { screenToFlowPosition } = useReactFlow();
 
   const workflowQuery = useWorkflowByIdQuery(workspaceId, workflowId);
-  console.log("workflowQuery:", workflowQuery.data);
   const saveMutation = useSaveWorkflowMutation(workspaceId);
   const [saveError, setSaveError] = useState<string | null>(null);
 

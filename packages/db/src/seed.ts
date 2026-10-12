@@ -151,7 +151,7 @@ async function main() {
     create: {
       id: SEED_WORKFLOW_ID,
       workspaceId: workspace.id,
-      name: "Contact form → webhook",
+      name: "Contact form → Slack",
       isActive: true,
       triggerType: WorkflowTriggerType.FORM_SUBMITTED,
       triggerConfig: { formId: form.id },
@@ -176,15 +176,24 @@ async function main() {
     },
   });
 
+  // Reuse a Slack connection if one was made through Nango Connect; seed can't create one
+  const slackConnection = await prisma.integrationConnection.findFirst({
+    where: { workspaceId: workspace.id, provider: IntegrationProvider.SLACK, isActive: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const slackNodeConfig = {
+    channelId: process.env.SEED_SLACK_CHANNEL_ID ?? "C0867KMRB1S",
+    ...(slackConnection ? { connectionId: slackConnection.id } : {}),
+  };
+
   await prisma.workflowNode.upsert({
     where: { id: SEED_WEBHOOK_NODE_ID },
     update: {
       name: "Send Slack message",
       category: WorkflowNodeCategory.ACTION,
       provider: IntegrationProvider.SLACK,
-      config: {
-        channel: process.env.SEED_SLACK_CHANNEL_ID ?? "C0867KMRB1S",
-      },
+      config: slackNodeConfig,
     },
     create: {
       id: SEED_WEBHOOK_NODE_ID,
@@ -195,9 +204,7 @@ async function main() {
       action: "post-message",
       positionX: 280,
       positionY: 0,
-      config: {
-        channel: process.env.SEED_SLACK_CHANNEL_ID ?? "C0867KMRB1S",
-      },
+      config: slackNodeConfig,
     },
   });
 
@@ -222,6 +229,7 @@ async function main() {
     formId: form.id,
     workflowId: workflow.id,
     webhookUrl,
+    slackConnectionId: slackConnection?.id ?? "none: connect Slack, then re-seed",
     submitUrl: `POST /api/v1/forms/${form.id}/submissions`,
   });
 
