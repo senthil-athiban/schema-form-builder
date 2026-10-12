@@ -3,7 +3,7 @@ import { getWidthStyle } from "@/form-builder/utils";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Label } from "@/shared/components/ui/label";
 import type { FormQuestion } from "@/shared/types";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import AddNewOption from "../actions/add-new-option.component";
 
 const LiveCheckField = ({

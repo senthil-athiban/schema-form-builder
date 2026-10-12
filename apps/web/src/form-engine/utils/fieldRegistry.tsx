@@ -1,10 +1,9 @@
-// utils/fieldRegistry.tsx
-
 import type { FieldType } from "../../shared/types";
 import type { BaseFieldProps } from "../../shared/types/field";
 import { TextField, CheckboxField, DateField, EmailField, MultiSelectField, NumberField, RadioField, SelectField, TextareaField, TimeField } from "../components/fields";
 
-export const FieldRegistry: Record<FieldType, React.ComponentType<BaseFieldProps>> = {
+// Partial: not every FieldType has a component yet; getFieldComponent falls back to TextField
+export const FieldRegistry: Partial<Record<FieldType, React.ComponentType<BaseFieldProps>>> = {
   text: TextField,
   email: EmailField,
   number: NumberField,

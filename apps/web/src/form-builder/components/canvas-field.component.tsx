@@ -345,7 +345,8 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
       .currentForm.pages.find((p) => p.id === pageId)
       ?.sections.find((s) => s.id === sectionId);
     const idx = section?.questions.findIndex((q) => q.id === question.id) ?? -1;
-    const rest = { ...question };
+    // Drop the id so addQuestion assigns a fresh one to the copy
+    const rest: Partial<FormQuestion> = { ...question };
     delete rest.id;
     addQuestion(
       pageId,
@@ -377,7 +378,7 @@ export const CanvasField: React.FC<CanvasFieldProps> = ({
     updateQuestion(pageId, sectionId, question.id, { label });
   };
 
-  const logics = currentForm.conditionalLogic.filter(
+  const logics = (currentForm.conditionalLogic ?? []).filter(
     (logic) => logic.sourceFieldId === question.id,
   );
 

@@ -173,7 +173,7 @@ export const FormBuilderEditor: React.FC = () => {
     if (!activeData || !dropTarget) return;
 
     if (activeData.kind === "palette-field") {
-      if (!dropTarget.pageId || !dropTarget.sectionId) {
+      if (!activeData.field || !dropTarget.pageId || !dropTarget.sectionId) {
         return;
       }
 
@@ -201,23 +201,23 @@ export const FormBuilderEditor: React.FC = () => {
     }
 
     if (activeData.kind === "question-sortable") {
-      if (!dropTarget) return;
+      const { pageId: sourcePageId, sectionId: sourceSectionId, questionId } = activeData;
+      if (!sourcePageId || !sourceSectionId || !questionId) return;
 
-      // handle swap of questions between sections
-      if (activeData.sectionId !== dropTarget.sectionId) {
-        // const activeSection = getSection(activeData.pageId, activeData.sectionId);
+      // Move a question into another section
+      if (sourceSectionId !== dropTarget.sectionId) {
         const dropTargetSection = getSection(dropTarget.pageId, dropTarget.sectionId);
-        const insertIndex = dropTargetSection.questions.length > 0 ? dropTargetSection.questions.length - 1 : 0;
-        const questionToSwap = getQuestion(activeData.pageId, activeData.sectionId, activeData.questionId);
-        if (!questionToSwap) return;
-        
-        deleteQuestion(activeData.pageId, activeData.sectionId, activeData.questionId);
-        addQuestion(dropTarget.pageId, dropTarget.sectionId, {
-          type: questionToSwap.type,
-          label: questionToSwap.label,
-          name: questionToSwap.name,
-          config: questionToSwap.config,
-        }, insertIndex);
+        const questionToMove = getQuestion(sourcePageId, sourceSectionId, questionId);
+        if (!dropTargetSection || !questionToMove) return;
+
+        // Same rule as palette drops: after the hovered question, else at the end
+        const insertIndex = dropTarget.questionId
+          ? dropTargetSection.questions.findIndex((q) => q.id === dropTarget.questionId) + 1
+          : dropTargetSection.questions.length;
+
+        deleteQuestion(sourcePageId, sourceSectionId, questionId);
+        // Pass the whole question so id, required, validation, etc. survive the move
+        addQuestion(dropTarget.pageId, dropTarget.sectionId, { ...questionToMove }, insertIndex);
         return;
       }
 
