@@ -2,6 +2,21 @@ import type { ApiErrorBody, ApiResult } from "./types";
 
 const DEFAULT_BASE_URL = "http://localhost:3001/api/v1";
 
+export const UNAUTHORIZED_EVENT = "auth:unauthorized";
+
+let currentWorkspaceId: string | null = null;
+
+export function setCurrentWorkspaceId(workspaceId: string | null): void {
+  currentWorkspaceId = workspaceId;
+}
+
+export function getWorkspaceId(): string {
+  if (!currentWorkspaceId) {
+    throw new Error("No workspace loaded yet: this page must render inside <RequireAuth>.");
+  }
+  return currentWorkspaceId;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly details?: ApiErrorBody["details"];
@@ -89,7 +104,13 @@ export async function apiRequest<T>(
     ...init,
     headers: requestHeaders,
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    // Send the session cookie to the API (different port = different origin)
+    credentials: "include",
   });
+
+  if (response.status === 401) {
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  }
 
   const payload = (await parseJsonBody(response)) as ApiErrorBody | T | null;
 
@@ -138,12 +159,3 @@ export function del<T>(
   return apiRequest<T>(path, { ...config, method: "DELETE" });
 }
 
-export function getWorkspaceId(): string {
-  const workspaceId = import.meta.env.VITE_WORKSPACE_ID;
-  if (!workspaceId) {
-    throw new Error(
-      "VITE_WORKSPACE_ID is not set. Add it to your frontend .env file.",
-    );
-  }
-  return workspaceId;
-}

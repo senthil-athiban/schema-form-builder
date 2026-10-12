@@ -246,3 +246,9 @@ export interface SaveWorkflowPayload {
   nodes: WorkflowNodeInput[];
   edges: WorkflowEdgeInput[];
 }
+
+export interface MeResult {
+  user: { id: string; name: string | null; email: string; image: string | null };
+  workspace: { id: string; name: string; slug: string };
+  role: "OWNER" | "ADMIN" | "EDITOR" | "ANALYST" | "VIEWER";
+}

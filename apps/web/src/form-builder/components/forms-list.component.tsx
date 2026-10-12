@@ -19,6 +19,7 @@ import type { FormListItem } from "@/shared/api/types";
 import { useFormsListQuery } from "@/services/forms/queries";
 import { usePublishFormMutation, useUnpublishFormMutation } from "@/services/forms/mutations";
 import { copyToClipboard } from "@/shared/lib/clipboard";
+import { UserMenu } from "@/auth/user-menu";
 import { SlackConnect } from "./slack-connect.component";
 import { StatCard } from "./forms-list/stat-card";
 import { FormsTable } from "./forms-list/forms-table";
@@ -159,6 +160,7 @@ export const FormsList: React.FC = () => {
               <Plus size={16} />
               Create form
             </Link>
+            <UserMenu />
           </div>
         </div>
       </header>

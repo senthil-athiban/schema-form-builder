@@ -38,6 +38,7 @@ export const submissionsApi = {
   async export(formId: string, format: "csv" | "json", filters: SubmissionFilters = {}): Promise<Blob> {
     const response = await fetch(
       buildApiUrl(`/forms/${formId}/submissions/export`, { format, ...filters }),
+      { credentials: "include" },
     );
     if (!response.ok) {
       let message = response.statusText || "Export failed";
