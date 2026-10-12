@@ -75,7 +75,7 @@ export const PublicFormPage: React.FC = () => {
 
         {submitError ? (
           <div
-            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-red-700"
+            className="mb-6 whitespace-pre-line rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-red-700"
             role="alert"
           >
             {submitError}
@@ -97,11 +97,17 @@ export const PublicFormPage: React.FC = () => {
                 await submitMutation.mutateAsync({ token, responseData: data });
                 setSubmitted(true);
               } catch (err) {
+                const fieldMessages =
+                  err instanceof ApiError && err.fieldErrors
+                    ? Object.values(err.fieldErrors)
+                    : [];
                 const message =
-                  err instanceof ApiError
-                    ? err.message
-                    : schema.settings.notifications?.error ??
-                      "Failed to submit your response. Please try again.";
+                  fieldMessages.length > 0
+                    ? fieldMessages.join("\n")
+                    : err instanceof ApiError
+                      ? err.message
+                      : schema.settings.notifications?.error ??
+                        "Failed to submit your response. Please try again.";
                 setSubmitError(message);
               }
             }}
