@@ -6,3 +6,6 @@ export function getSafeRedirect(value: string | null): string {
 }
 
 export const MIN_PASSWORD_LENGTH = 8;
+
+export const getVerifyCallbackURL = (redirect: string) =>
+  `${window.location.origin}/login?redirect=${encodeURIComponent(redirect)}`;

@@ -5,18 +5,21 @@ import { Loader2 } from "lucide-react";
 import { authClient } from "@/shared/lib/auth-client";
 import { useMeQuery } from "@/services/auth/queries";
 import { AuthLayout } from "./auth-layout";
-import { authInputClass, getSafeRedirect } from "./auth.utils";
+import { authInputClass, getSafeRedirect, getVerifyCallbackURL } from "./auth.utils";
+import { ResendVerification } from "./resend-verification";
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const redirect = getSafeRedirect(searchParams.get("redirect"));
+  const linkError = searchParams.get("error");
   const meQuery = useMeQuery();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   if (meQuery.data) return <Navigate to={redirect} replace />;
@@ -24,11 +27,22 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setUnverifiedEmail(null);
     setSubmitting(true);
-    const { error: signInError } = await authClient.signIn.email({ email, password });
+    const { error: signInError } = await authClient.signIn.email({
+      email,
+      password,
+      // Used by the fresh verification email that sign-in sends to unverified users
+      callbackURL: getVerifyCallbackURL(redirect),
+    });
     setSubmitting(false);
 
     if (signInError) {
+      // 403 = right password, email not verified yet (a new link was just sent)
+      if (signInError.status === 403) {
+        setUnverifiedEmail(email);
+        return;
+      }
       setError(signInError.message ?? "Invalid email or password");
       return;
     }
@@ -62,6 +76,17 @@ export const LoginPage: React.FC = () => {
           />
         </label>
 
+        {linkError && !error && !unverifiedEmail && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            That verification link is invalid or has expired. Sign in to get a new one.
+          </p>
+        )}
+        {unverifiedEmail && (
+          <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Please verify your email first. We just sent a new link to {unverifiedEmail}.
+            <ResendVerification email={unverifiedEmail} redirect={redirect} />
+          </div>
+        )}
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         <button

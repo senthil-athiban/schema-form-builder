@@ -29,5 +29,7 @@ if (existing) {
   });
 }
 
-console.log(`Password ${existing ? "updated" : "set"} for ${user.email}`);
+await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
+
+console.log(`Password ${existing ? "updated" : "set"} for ${user.email} (email marked verified)`);
 await prisma.$disconnect();
