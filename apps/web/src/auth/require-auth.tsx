@@ -46,5 +46,9 @@ export const RequireAuth: React.FC = () => {
   }
 
   setCurrentWorkspaceId(meQuery.data.workspace.id);
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+    </>
+  );
 };

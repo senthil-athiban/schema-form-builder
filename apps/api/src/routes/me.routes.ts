@@ -12,7 +12,7 @@ meRouter.get(
         const [user, workspace] = await Promise.all([
             prisma.user.findUnique({
               where: { id: userId },
-              select: { id: true, name: true, email: true, image: true },
+              select: { id: true, name: true, email: true, image: true, emailVerified: true },
             }),
             prisma.workspace.findUnique({
               where: { id: workspaceId },

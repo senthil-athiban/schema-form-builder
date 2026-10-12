@@ -13,13 +13,11 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8, // web sign-up form checks the same (MIN_PASSWORD_LENGTH)
-    // No session until the email is confirmed; sign-in returns 403 meanwhile
-    requireEmailVerification: true,
+    // Soft verification: users can sign in before verifying; the web app shows a reminder
+    requireEmailVerification: false,
   },
   emailVerification: {
     sendOnSignUp: true,
-    // An unverified user who tries to sign in gets a fresh link
-    sendOnSignIn: true,
     autoSignInAfterVerification: true,
     expiresIn: 60 * 60, // 1 hour, matching the email text
     sendVerificationEmail: async ({ user, url }) => {

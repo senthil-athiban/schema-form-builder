@@ -248,7 +248,7 @@ export interface SaveWorkflowPayload {
 }
 
 export interface MeResult {
-  user: { id: string; name: string | null; email: string; image: string | null };
+  user: { id: string; name: string | null; email: string; image: string | null; emailVerified: boolean };
   workspace: { id: string; name: string; slug: string };
   role: "OWNER" | "ADMIN" | "EDITOR" | "ANALYST" | "VIEWER";
 }

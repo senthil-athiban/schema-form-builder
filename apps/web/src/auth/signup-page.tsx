@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from "react";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
-import { Loader2, MailCheck } from "lucide-react";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import { authClient } from "@/shared/lib/auth-client";
 import { useMeQuery } from "@/services/auth/queries";
 import { AuthLayout } from "./auth-layout";
 import { authInputClass, getSafeRedirect, getVerifyCallbackURL, MIN_PASSWORD_LENGTH } from "./auth.utils";
-import { ResendVerification } from "./resend-verification";
 
 export const SignupPage: React.FC = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const redirect = getSafeRedirect(searchParams.get("redirect"));
   const meQuery = useMeQuery();
@@ -17,8 +19,6 @@ export const SignupPage: React.FC = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  // Set after sign-up: the account exists but stays signed out until the email link is clicked
-  const [sentTo, setSentTo] = useState<string | null>(null);
 
   if (meQuery.data) return <Navigate to={redirect} replace />;
 
@@ -26,11 +26,12 @@ export const SignupPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    // The API creates the user + workspace and emails a verification link (no session yet)
+    // Signs the user in right away; the API also emails a verification link
     const { error: signUpError } = await authClient.signUp.email({
       name: name.trim(),
       email,
       password,
+      // Where the verification link sends them later
       callbackURL: getVerifyCallbackURL(redirect),
     });
     setSubmitting(false);
@@ -39,23 +40,10 @@ export const SignupPage: React.FC = () => {
       setError(signUpError.message ?? "Could not create your account");
       return;
     }
-    setSentTo(email);
+    // VerifyEmailReminder nudges them to verify from here on
+    queryClient.clear();
+    navigate(redirect, { replace: true });
   };
-
-  if (sentTo) {
-    return (
-      <AuthLayout title="Check your inbox" subtitle="One more step to activate your account">
-        <div className="flex flex-col items-center text-center">
-          <MailCheck size={36} className="text-indigo-600" aria-hidden />
-          <p className="mt-3 text-sm text-slate-600">
-            We sent a verification link to <span className="font-medium text-slate-900">{sentTo}</span>. Click it to
-            sign in. The link expires in 1 hour.
-          </p>
-          <ResendVerification email={sentTo} redirect={redirect} />
-        </div>
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout title="Create your account" subtitle="You'll get your own workspace for forms and responses">
