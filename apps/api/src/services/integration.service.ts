@@ -1,4 +1,4 @@
-import { IntegrationProvider, prisma } from "@form-builder/db";
+import { IntegrationProvider, prisma, type IntegrationConnection } from "@form-builder/db";
 import { BadRequestError, NotFoundError } from "../errors/app-error";
 import { NANGO_PROVIDER_CONFIG_KEY, nango } from "../lib/nango";
 import { type SlackConversationsListResponse, type SlackChannel } from "../types/integration";
@@ -52,7 +52,7 @@ export const upsertFromNangoAuth = async (input: {
     workspaceId: string;
     connectionId: string;
     providerConfigKey: string;
-}) => {
+}): Promise<IntegrationConnection | null> => {
     if (input.providerConfigKey !== NANGO_PROVIDER_CONFIG_KEY.SLACK) {
         return null;
     }
@@ -83,8 +83,8 @@ export const upsertFromNangoAuth = async (input: {
     return prisma.integrationConnection.create({ data });
 }
 
-export const deactivateByConnectionId = async (connectionId: string) => {
-    const existing = await prisma.integrationConnection?.findFirst({
+export const deactivateByConnectionId = async (connectionId: string): Promise<IntegrationConnection | null> => {
+    const existing = await prisma.integrationConnection.findFirst({
         where: { externalAccountId: connectionId }
     });
 
