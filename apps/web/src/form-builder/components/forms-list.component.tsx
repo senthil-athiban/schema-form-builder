@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Send,
   Table2,
+  Workflow,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getPublicFormUrl, getWorkspaceId } from "@/shared/api";
@@ -187,6 +188,14 @@ export const FormsList: React.FC = () => {
                       <Table2 size={14} />
                       View submissions
                     </Link>
+                    <Link
+                      to={`/forms/${form.id}/workflows`}
+                      className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 sm:text-sm"
+                    >
+                      <Workflow size={14} />
+                      Workflows
+                    </Link>
+
                     <button
                       type="button"
                       onClick={() => void handlePublish(form.id, form.name)}
